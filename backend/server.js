@@ -11,6 +11,20 @@ app.get("/", (req, res) => {
 	res.json({ message: "The Grist Mill Backend is running!" });
 });
 
+// API Routes
+app.get("/api/health", (req, res) => {
+	res.json({ 
+		status: "healthy",
+		timestamp: new Date().toISOString(),
+		service: "The Grist Mill Backend"
+	});
+});
+
+app.get("/api/items", (req, res) => {
+	// Returns empty array initially - will be populated with real data later
+	res.json([]);
+});
+
 // Initialize database and start server
 async function startServer() {
 	try {
