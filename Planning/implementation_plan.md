@@ -28,18 +28,18 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 1.3: Basic API Endpoints
 
-- [ ] Implement `GET /api/health` endpoint
-- [ ] Implement `GET /api/items` endpoint (returns empty array initially)
-- [ ] Test both endpoints return JSON
+- [x] Implement `GET /api/health` endpoint
+- [x] Implement `GET /api/items` endpoint (returns empty array initially)
+- [x] Test both endpoints return JSON
 
-**Commit**: "Add basic API endpoints"
+**Commit**: "Add basic API endpoints" ✅ **COMPLETED**
 
 ### Task 1.4: Sample Data
 
-- [ ] Create script to insert sample content item
-- [ ] Verify API returns the sample data
+- [x] Create script to insert sample content item
+- [x] Verify API returns the sample data
 
-**Commit**: "Add sample data insertion and retrieval"
+**Commit**: "Add sample data insertion and retrieval" ✅ **COMPLETED**
 
 ---
 

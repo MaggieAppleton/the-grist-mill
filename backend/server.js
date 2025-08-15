@@ -1,5 +1,9 @@
 const express = require("express");
-const { initializeDatabase } = require("./database");
+const {
+	initializeDatabase,
+	insertSampleData,
+	getAllItems,
+} = require("./database");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -13,16 +17,21 @@ app.get("/", (req, res) => {
 
 // API Routes
 app.get("/api/health", (req, res) => {
-	res.json({ 
+	res.json({
 		status: "healthy",
 		timestamp: new Date().toISOString(),
-		service: "The Grist Mill Backend"
+		service: "The Grist Mill Backend",
 	});
 });
 
-app.get("/api/items", (req, res) => {
-	// Returns empty array initially - will be populated with real data later
-	res.json([]);
+app.get("/api/items", async (req, res) => {
+	try {
+		const items = await getAllItems();
+		res.json(items);
+	} catch (error) {
+		console.error("Error fetching items:", error);
+		res.status(500).json({ error: "Failed to fetch items" });
+	}
 });
 
 // Initialize database and start server
@@ -30,6 +39,10 @@ async function startServer() {
 	try {
 		await initializeDatabase();
 		console.log("Database initialized successfully");
+
+		// Insert sample data
+		await insertSampleData();
+		console.log("Sample data inserted successfully");
 
 		app.listen(PORT, () => {
 			console.log(`Server is running on port ${PORT}`);
