@@ -16,7 +16,7 @@ async function startServer() {
 	try {
 		await initializeDatabase();
 		console.log("Database initialized successfully");
-		
+
 		app.listen(PORT, () => {
 			console.log(`Server is running on port ${PORT}`);
 		});
