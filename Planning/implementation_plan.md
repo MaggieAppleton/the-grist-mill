@@ -49,25 +49,25 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 2.1: HN Discovery + Hydration
 
-- [ ] Use Algolia HN Search API to discover stories from the last 24h matching initial keyword filters (AI/LLM)
-- [ ] Hydrate discovered IDs via official Firebase API to retrieve canonical item data
-- [ ] Limit to a configurable max items (e.g., 50)
+- [x] Use Algolia HN Search API to discover stories from the last 24h matching initial keyword filters (AI/LLM)
+- [x] Hydrate discovered IDs via official Firebase API to retrieve canonical item data
+- [x] Limit to a configurable max items (e.g., 50)
 
 **Commit**: "Add Hacker News discovery and hydration"
 
 ### Task 2.2: Store Hacker News Stories
 
-- [ ] Map HN items to `content_items` format (`source: "hackernews"`)
-- [ ] Store title, url, author, score, time, and raw JSON
-- [ ] Create simple summary text (e.g., "{title} — {score} points by {by}")
+- [x] Map HN items to `content_items` format (`source: "hackernews"`)
+- [x] Store title, url, author, score, time, and raw JSON
+- [x] Create simple summary text (e.g., "{title} — {score} points by {by}")
 
 **Commit**: "Store Hacker News stories in database"
 
 ### Task 2.3: Manual Collection Endpoint
 
-- [ ] Add `POST /api/collectors/hackernews` endpoint
-- [ ] Trigger collection manually via API call
-- [ ] Return success/failure status and items count
+- [x] Add `POST /api/collectors/hackernews` endpoint
+- [x] Trigger collection manually via API call
+- [x] Return success/failure status and items count
 
 **Commit**: "Add manual Hacker News collection trigger"
 

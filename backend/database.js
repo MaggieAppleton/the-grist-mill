@@ -126,6 +126,38 @@ function getAllItems() {
 	});
 }
 
+// Get items with optional filtering and pagination
+function getItemsFiltered({ source, limit = 50, offset = 0 } = {}) {
+	return new Promise((resolve, reject) => {
+		const whereClauses = [];
+		const params = [];
+		if (source) {
+			whereClauses.push("source_type = ?");
+			params.push(source);
+		}
+		const whereSQL = whereClauses.length
+			? `WHERE ${whereClauses.join(" AND ")}`
+			: "";
+		const query = `
+      SELECT id, source_type, source_id, title, summary, raw_content, url, created_at, collected_at
+      FROM content_items
+      ${whereSQL}
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+		params.push(Number(limit) || 50, Number(offset) || 0);
+
+		db.all(query, params, (err, rows) => {
+			if (err) {
+				console.error("Error fetching filtered items:", err.message);
+				reject(err);
+			} else {
+				resolve(rows);
+			}
+		});
+	});
+}
+
 // Insert a single content item (ignores duplicates by UNIQUE constraint)
 function insertContentItem(item) {
 	return new Promise((resolve, reject) => {
@@ -212,6 +244,7 @@ module.exports = {
 	initializeDatabase,
 	insertSampleData,
 	getAllItems,
+	getItemsFiltered,
 	insertContentItem,
 	insertContentItems,
 	closeDatabase,
