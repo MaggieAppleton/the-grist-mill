@@ -126,6 +126,73 @@ function getAllItems() {
 	});
 }
 
+// Insert a single content item (ignores duplicates by UNIQUE constraint)
+function insertContentItem(item) {
+	return new Promise((resolve, reject) => {
+		const insertQuery = `
+      INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, raw_content, url)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+		db.run(
+			insertQuery,
+			[
+				item.source_type,
+				item.source_id,
+				item.title || null,
+				item.summary || null,
+				item.raw_content || null,
+				item.url || null,
+			],
+			function (err) {
+				if (err) {
+					return reject(err);
+				}
+				resolve(this.lastID);
+			}
+		);
+	});
+}
+
+// Bulk insert content items in a transaction
+function insertContentItems(items) {
+	return new Promise((resolve, reject) => {
+		db.serialize(() => {
+			db.run("BEGIN TRANSACTION");
+			const stmt = db.prepare(
+				"INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, raw_content, url) VALUES (?, ?, ?, ?, ?, ?)"
+			);
+			let insertedCount = 0;
+			for (const item of items) {
+				stmt.run(
+					[
+						item.source_type,
+						item.source_id,
+						item.title || null,
+						item.summary || null,
+						item.raw_content || null,
+						item.url || null,
+					],
+					function (err) {
+						if (!err && this.changes > 0) {
+							insertedCount += 1;
+						}
+					}
+				);
+			}
+			stmt.finalize((err) => {
+				if (err) {
+					db.run("ROLLBACK");
+					return reject(err);
+				}
+				db.run("COMMIT", (commitErr) => {
+					if (commitErr) return reject(commitErr);
+					resolve(insertedCount);
+				});
+			});
+		});
+	});
+}
+
 // Close database connection
 function closeDatabase() {
 	return new Promise((resolve) => {
@@ -145,5 +212,7 @@ module.exports = {
 	initializeDatabase,
 	insertSampleData,
 	getAllItems,
+	insertContentItem,
+	insertContentItems,
 	closeDatabase,
 };
