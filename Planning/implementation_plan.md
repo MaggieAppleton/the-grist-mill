@@ -1,6 +1,6 @@
 # The Grist Mill - Implementation Plan
 
-Updated: August 15th, 2025 at 8:39am
+Updated: August 17th, 2025 at 3:24pm
 
 ## Overview
 
@@ -43,41 +43,33 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ---
 
-## Phase 2: Basic Discord Data Collection
+## Phase 2: Basic Hacker News Data Collection
 
-**Goal**: Collect real Discord messages and store them (without AI processing yet)
+**Goal**: Fetch Hacker News stories from the last 24 hours and store them (without AI processing yet)
 
-### Task 2.1: Discord Client Setup
+### Task 2.1: HN Discovery + Hydration
 
-- [ ] Add Discord.js dependency
-- [ ] Create Discord client with bot token from environment
-- [ ] Test connection to Discord (console log success)
+- [ ] Use Algolia HN Search API to discover stories from the last 24h matching initial keyword filters (AI/LLM)
+- [ ] Hydrate discovered IDs via official Firebase API to retrieve canonical item data
+- [ ] Limit to a configurable max items (e.g., 50)
 
-**Commit**: "Add Discord.js client connection"
+**Commit**: "Add Hacker News discovery and hydration"
 
-### Task 2.2: Basic Message Fetching
+### Task 2.2: Store Hacker News Stories
 
-- [ ] Implement function to fetch messages from single channel
-- [ ] Test with one hardcoded channel ID
-- [ ] Log fetched messages to console
+- [ ] Map HN items to `content_items` format (`source: "hackernews"`)
+- [ ] Store title, url, author, score, time, and raw JSON
+- [ ] Create simple summary text (e.g., "{title} — {score} points by {by}")
 
-**Commit**: "Add basic Discord message fetching"
+**Commit**: "Store Hacker News stories in database"
 
-### Task 2.3: Store Discord Messages
+### Task 2.3: Manual Collection Endpoint
 
-- [ ] Create function to convert Discord message to content_item format
-- [ ] Store single channel's messages in database
-- [ ] Create simple summary text (e.g., "5 messages from #general")
-
-**Commit**: "Store Discord messages in database"
-
-### Task 2.4: Manual Collection Endpoint
-
-- [ ] Add `POST /api/collectors/discord` endpoint
+- [ ] Add `POST /api/collectors/hackernews` endpoint
 - [ ] Trigger collection manually via API call
-- [ ] Return success/failure status
+- [ ] Return success/failure status and items count
 
-**Commit**: "Add manual Discord collection trigger"
+**Commit**: "Add manual Hacker News collection trigger"
 
 ---
 
@@ -130,13 +122,13 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 **Commit**: "Add OpenAI client integration"
 
-### Task 4.2: Discord Summarization
+### Task 4.2: Hacker News Summarization & Classification
 
-- [ ] Create Discord-specific summarization prompt
-- [ ] Replace basic summaries with AI-generated ones
-- [ ] Test with real Discord message data
+- [ ] Define user interest statements (keywords/weights) for AI/LLM and AI-for-software-dev
+- [ ] Replace basic summaries with AI-generated ones for HN items
+- [ ] Classify relevance and set a `highlight` flag in metadata
 
-**Commit**: "Add AI summarization for Discord messages"
+**Commit**: "Add AI summarization and relevance for HN stories"
 
 ### Task 4.3: Error Handling
 
@@ -170,11 +162,11 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 5.2: Collection Job
 
-- [ ] Move Discord collection logic to scheduled job
-- [ ] Change schedule to daily at 6 AM
+- [ ] Move Hacker News collection logic to scheduled job
+- [ ] Schedule daily at 6 AM
 - [ ] Test job runs automatically
 
-**Commit**: "Add automated Discord collection job"
+**Commit**: "Add automated Hacker News collection job"
 
 ### Task 5.3: Job Tracking
 
@@ -190,12 +182,12 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 **Goal**: Add the refinements that make it pleasant to use
 
-### Task 6.1: Discord Rate Limiting
+### Task 6.1: API Rate Limiting
 
-- [ ] Add 100ms delays between Discord API calls
-- [ ] Test with multiple channels to ensure no rate limit errors
+- [ ] Add minimal delays/backoff between external API calls (Algolia/Firebase)
+- [ ] Verify no rate limit errors during daily runs
 
-**Commit**: "Add Discord API rate limiting"
+**Commit**: "Add external API rate limiting"
 
 ### Task 6.2: Budget Protection
 
@@ -237,19 +229,19 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 7.2: Initial Sync Command
 
-- [ ] Add command line flag for initial Discord sync
-- [ ] Fetch last 1-2 days of messages on first run
+- [ ] Add command line flag for initial HN sync
+- [ ] Fetch last 1-2 days of HN stories on first run
 - [ ] Document usage in README
 
-**Commit**: "Add initial sync functionality"
+**Commit**: "Add initial HN sync functionality"
 
-### Task 7.3: Multi-Server Support
+### Task 7.3: Feed Configuration
 
-- [ ] Update Discord collector to handle multiple servers
-- [ ] Add channel exclusion filtering
-- [ ] Test with configured servers from environment
+- [ ] Support selecting HN feeds (top, new, best) for discovery fallback
+- [ ] Make daily item limit configurable
+- [ ] Document configuration options
 
-**Commit**: "Add multi-server Discord collection"
+**Commit**: "Add HN feed and limits configuration"
 
 ---
 
@@ -274,7 +266,7 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 - **Database**: Start with simple SQLite file
 - **Error Handling**: Console logging initially, improve in later phases
 - **Rate Limiting**: Skip until Phase 6 to avoid complexity
-- **Configuration**: Environment variables from Phase 1
+- **Configuration**: Minimal env/config; no API keys required for HN
 
 ### Task Completion Criteria
 
@@ -287,13 +279,13 @@ Each task must:
 
 ### Extension Points (Future Phases)
 
-- **Phase 8+**: Add new content sources (Hacker News, Bluesky)
+- **Phase 8+**: Add new content sources (Discord, Bluesky)
 - **Phase 9+**: Add filtering and search capabilities
 - **Phase 10+**: Improve AI prompts and add source-specific handling
 
 ## Success Metrics by Phase
 
-- **Phase 3**: Can see Discord data in browser
+- **Phase 3**: Can see filtered Hacker News data in browser
 - **Phase 4**: AI summaries are meaningful and helpful
 - **Phase 5**: System updates automatically without intervention
 - **Phase 6**: Pleasant to use daily, no maintenance needed

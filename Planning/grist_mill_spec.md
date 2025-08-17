@@ -1,10 +1,10 @@
 # The Grist Mill - Product Specification
 
-Updated: August 15th, 2025 at 8:30am
+Updated: August 17th, 2025 at 3:24pm
 
 ## Overview
 
-A personal web-based dashboard that aggregates and summarizes content from various sources using AI. Initially focused on Discord server summaries, designed to be extensible for future content sources like Bluesky, Hacker News, Reddit, etc. Built for single-user local/personal hosting.
+A personal web-based dashboard that aggregates and summarizes content from various sources using AI. Initially focused on Hacker News with AI-driven filtering, designed to be extensible for future content sources like Discord, Bluesky, Reddit, etc. Built for single-user local/personal hosting.
 
 ## User Story
 
@@ -16,8 +16,8 @@ A personal web-based dashboard that aggregates and summarizes content from vario
 
 1. **Content Collection**
 
-   - Discord collector: runs daily at 6 AM, gathers previous day's messages from ~20 channels across 2 servers
-   - Rate limiting: Simple delays between API calls to respect Discord limits
+   - Hacker News collector (MVP): runs daily at 6 AM, discovers stories from last 24h matching AI/LLM interests via Algolia HN Search, hydrates canonical item data from official Firebase API
+   - Rate limiting/backoff between external requests
    - Initial sync: Fetches last 1-2 days only, or starts fresh with next day's collection
    - Modular collector architecture for future extensibility
    - Each collector outputs standardized content objects
@@ -150,20 +150,22 @@ CREATE UNIQUE INDEX idx_ai_usage_date ON ai_usage(date);
 - `GET /api/health` - Health check endpoint
 - `GET /api/usage` - Get daily AI usage and cost tracking
 - `POST /api/collectors/trigger/:name` - Manual collector trigger (dev only)
+- `POST /api/collectors/hackernews` - Trigger Hacker News collection (MVP)
 
 ### Content Item Response Format
 
 ```json
 {
 	"id": 123,
-	"source": "discord",
+	"source": "hackernews",
 	"title": "Tech Community - 5 discussions",
-	"summary": "**#general**: New React 19 features being discussed, particularly the new compiler optimizations. [Jump to conversation](https://discord.com/channels/123456789/111111111/222222222)\n\n**#help**: Multiple users reporting deployment issues with Vercel. @alice provided a helpful solution. [See solution](https://discord.com/channels/123456789/333333333/444444444)\n\n**#standup**: Team shared progress updates, Sprint 12 wrapping up ahead of schedule.",
+	"summary": "{title} — {score} points by {by}",
 	"url": null,
 	"metadata": {
-		"server_name": "Tech Community",
-		"channels": ["general", "help", "standup"],
-		"message_count": 47
+		"score": 247,
+		"author": "pg",
+		"hn_id": 42424242,
+		"highlight": true
 	},
 	"created_at": "2025-08-15T06:00:00Z",
 	"processed_at": "2025-08-15T06:05:00Z"
@@ -219,33 +221,14 @@ class BaseCollector {
 	}
 }
 
-class DiscordCollector extends BaseCollector {
+class HackerNewsCollector extends BaseCollector {
 	constructor() {
-		this.rateLimit = 100; // 100ms delay between API calls
+		this.rateLimit = 100; // 100ms delay between external requests
 	}
 
 	async collect() {
-		const results = [];
-		for (const server of this.servers) {
-			for (const channel of this.getIncludedChannels(server)) {
-				try {
-					const messages = await this.fetchChannelMessages(channel);
-					results.push(...messages);
-					await this.delay(this.rateLimit); // Rate limiting
-				} catch (error) {
-					console.log(`Failed to fetch ${channel.name}: ${error.message}`);
-					// Continue with other channels
-				}
-			}
-		}
-		return results;
-	}
-
-	getIncludedChannels(server) {
-		// Include all channels except those in excludedChannels list
-		return server.channels.filter(
-			(ch) => !server.excludedChannels.includes(ch.name)
-		);
+		// Discover via Algolia, hydrate via Firebase
+		return [];
 	}
 }
 ```
@@ -256,14 +239,11 @@ class DiscordCollector extends BaseCollector {
 
 ```bash
 # Required API keys
-DISCORD_TOKEN=your_discord_bot_token
 OPENAI_API_KEY=your_openai_api_key
 
-# Discord server configuration
-DISCORD_SERVERS=server1_guild_id,server2_guild_id
-
-# Optional: excluded channels (comma-separated)
-EXCLUDED_CHANNELS=spam,bot-commands,off-topic
+# HN collection configuration
+HN_MAX_ITEMS=50
+HN_QUERY=ai,llm,language model,gpt,openai,anthropic,claude,llama,transformer,rag,embedding,fine-tuning,copilot,cursor,code generation,agents
 ```
 
 ### `config/default.json`
@@ -332,8 +312,8 @@ EXCLUDED_CHANNELS=spam,bot-commands,off-topic
 
 ## Job Scheduling
 
-- **Discord Collector**: Daily at 6 AM (cron: `0 6 * * *`)
-- **Rate Limiting**: 100ms delays between Discord API calls
+- **Hacker News Collector**: Daily at 6 AM (cron: `0 6 * * *`)
+- **Rate Limiting**: 100ms delays/backoff between external API calls
 - **Error Handling**: Simple logging, continue processing other channels on failures
 - **Future Collectors**: Configurable schedules per collector
 - **Implementation**: node-cron for personal use
@@ -349,7 +329,7 @@ EXCLUDED_CHANNELS=spam,bot-commands,off-topic
 ## Success Metrics
 
 - Dashboard loads quickly (<2 seconds)
-- Daily Discord summaries appear consistently at 6 AM
+- Daily Hacker News summaries appear consistently at 6 AM
 - AI costs stay under $1/day with meaningful summaries
 - Mobile interface is clean and readable
 - Simple error logging helps debug issues
