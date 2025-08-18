@@ -1,6 +1,6 @@
 # The Grist Mill - Implementation Plan
 
-Updated: August 17th, 2025 at 6:17pm
+Updated: August 17th, 2025 at 8:05pm
 
 ## Overview
 
@@ -87,11 +87,11 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 3.2: API Client
 
-- [ ] Create API client function to fetch items from backend
-- [ ] Test API call returns data in React component
-- [ ] Display raw JSON data on page
+- [x] Create API client function to fetch items from backend
+- [x] Test API call returns data in React component
+- [x] Display raw JSON data on page
 
-**Commit**: "Add API client and data fetching"
+**Commit**: "Add API client and data fetching" ✅ **COMPLETED**
 
 ### Task 3.3: Basic Timeline Layout
 
