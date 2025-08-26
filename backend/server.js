@@ -7,6 +7,7 @@ const {
 	getItemsFiltered,
 	insertContentItems,
 } = require("./database");
+const AIService = require("./services/ai");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -69,6 +70,35 @@ app.post("/api/collectors/hackernews", async (req, res) => {
 	} catch (error) {
 		console.error("HN manual collect failed:", error);
 		res.status(500).json({ error: "Failed to collect Hacker News" });
+	}
+});
+
+// AI service test endpoint
+app.get("/api/ai/test", async (req, res) => {
+	try {
+		const aiService = new AIService();
+
+		if (!aiService.isAvailable()) {
+			return res.status(503).json({
+				error: "AI service not available",
+				message: "OPENAI_API_KEY environment variable not set",
+			});
+		}
+
+		const result = await aiService.testConnection();
+		res.json({
+			status: "success",
+			message: result.message,
+			usage: result.usage,
+			ai_available: true,
+		});
+	} catch (error) {
+		console.error("AI test failed:", error);
+		res.status(500).json({
+			error: "AI test failed",
+			message: error.message,
+			ai_available: false,
+		});
 	}
 });
 
