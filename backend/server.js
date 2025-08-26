@@ -1,3 +1,6 @@
+// Load environment variables
+require("dotenv").config();
+
 const express = require("express");
 const { discoverAndHydrateHN } = require("./collectors/hackernews");
 const {
@@ -46,16 +49,22 @@ app.get("/api/items", async (req, res) => {
 // Manual Hacker News collection trigger
 app.post("/api/collectors/hackernews", async (req, res) => {
 	try {
+		const aiService = new AIService();
 		const hydrated = await discoverAndHydrateHN();
-		const items = hydrated.map((it) => {
+
+		const items = [];
+		let processedCount = 0;
+		let aiProcessedCount = 0;
+
+		for (const it of hydrated) {
 			const f = it.firebase || {};
-			return {
+
+			// Basic item structure
+			const item = {
 				source_type: "hackernews",
 				source_id: String(it.id),
 				title: f.title || null,
-				summary: f.title
-					? `${f.title} — ${f.score ?? 0} points by ${f.by ?? "unknown"}`
-					: null,
+				summary: null,
 				raw_content: JSON.stringify({
 					firebase: f,
 					algolia: it.algolia || null,
@@ -63,10 +72,53 @@ app.post("/api/collectors/hackernews", async (req, res) => {
 				url:
 					f.url ||
 					(f.id ? `https://news.ycombinator.com/item?id=${f.id}` : null),
+				highlight: false,
 			};
-		});
+
+			// Try AI processing if available
+			if (aiService.isAvailable() && f.title) {
+				try {
+					const aiResult = await aiService.processHackerNewsItem(f);
+					item.summary = aiResult.summary;
+					item.highlight = aiResult.highlight;
+					// Add AI metadata to raw_content
+					const rawContent = JSON.parse(item.raw_content);
+					rawContent.ai_processing = {
+						relevance_score: aiResult.relevance_score,
+						relevance_explanation: aiResult.relevance_explanation,
+						usage: aiResult.usage,
+					};
+					item.raw_content = JSON.stringify(rawContent);
+					aiProcessedCount++;
+				} catch (aiError) {
+					console.warn(
+						`AI processing failed for item ${it.id}:`,
+						aiError.message
+					);
+					// Fallback to basic summary
+					item.summary = f.title
+						? `${f.title} — ${f.score ?? 0} points by ${f.by ?? "unknown"}`
+						: null;
+				}
+			} else {
+				// Fallback to basic summary when AI is not available
+				item.summary = f.title
+					? `${f.title} — ${f.score ?? 0} points by ${f.by ?? "unknown"}`
+					: null;
+			}
+
+			items.push(item);
+			processedCount++;
+		}
+
 		const inserted = await insertContentItems(items);
-		res.json({ status: "ok", inserted });
+		res.json({
+			status: "ok",
+			inserted,
+			processed: processedCount,
+			ai_processed: aiProcessedCount,
+			ai_available: aiService.isAvailable(),
+		});
 	} catch (error) {
 		console.error("HN manual collect failed:", error);
 		res.status(500).json({ error: "Failed to collect Hacker News" });

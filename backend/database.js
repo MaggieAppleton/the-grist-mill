@@ -26,6 +26,7 @@ function initializeDatabase() {
         summary TEXT,
         raw_content TEXT,
         url TEXT,
+        highlight BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         collected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(source_type, source_id)
@@ -110,7 +111,7 @@ function insertSampleData() {
 function getAllItems() {
 	return new Promise((resolve, reject) => {
 		const query = `
-      SELECT id, source_type, source_id, title, summary, raw_content, url, created_at, collected_at
+      SELECT id, source_type, source_id, title, summary, raw_content, url, highlight, created_at, collected_at
       FROM content_items 
       ORDER BY created_at DESC
     `;
@@ -139,7 +140,7 @@ function getItemsFiltered({ source, limit = 50, offset = 0 } = {}) {
 			? `WHERE ${whereClauses.join(" AND ")}`
 			: "";
 		const query = `
-      SELECT id, source_type, source_id, title, summary, raw_content, url, created_at, collected_at
+      SELECT id, source_type, source_id, title, summary, raw_content, url, highlight, created_at, collected_at
       FROM content_items
       ${whereSQL}
       ORDER BY created_at DESC
@@ -162,8 +163,8 @@ function getItemsFiltered({ source, limit = 50, offset = 0 } = {}) {
 function insertContentItem(item) {
 	return new Promise((resolve, reject) => {
 		const insertQuery = `
-      INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, raw_content, url)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, raw_content, url, highlight)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 		db.run(
 			insertQuery,
@@ -174,6 +175,7 @@ function insertContentItem(item) {
 				item.summary || null,
 				item.raw_content || null,
 				item.url || null,
+				item.highlight || false,
 			],
 			function (err) {
 				if (err) {
@@ -191,7 +193,7 @@ function insertContentItems(items) {
 		db.serialize(() => {
 			db.run("BEGIN TRANSACTION");
 			const stmt = db.prepare(
-				"INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, raw_content, url) VALUES (?, ?, ?, ?, ?, ?)"
+				"INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, raw_content, url, highlight) VALUES (?, ?, ?, ?, ?, ?, ?)"
 			);
 			let insertedCount = 0;
 			for (const item of items) {
@@ -203,6 +205,7 @@ function insertContentItems(items) {
 						item.summary || null,
 						item.raw_content || null,
 						item.url || null,
+						item.highlight || false,
 					],
 					function (err) {
 						if (!err && this.changes > 0) {

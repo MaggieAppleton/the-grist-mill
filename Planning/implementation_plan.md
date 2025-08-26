@@ -1,6 +1,6 @@
 # The Grist Mill - Implementation Plan
 
-Updated: August 26, 2025 8:33AM
+Updated: August 26, 2025 4:29P
 
 ## Overview
 
@@ -103,10 +103,10 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 3.4: Mobile-Friendly Styling
 
-- [ ] Add responsive CSS for mobile screens
-- [ ] Test layout works on phone-sized viewport
+- [x] Add responsive CSS for mobile screens
+- [x] Test layout works on phone-sized viewport
 
-**Commit**: "Add mobile-responsive styling"
+**Commit**: "Add mobile-responsive styling" ✅ **COMPLETED**
 
 ---
 
@@ -116,19 +116,19 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 4.1: OpenAI Client Setup
 
-- [ ] Add OpenAI dependency
-- [ ] Create AI service class with API key from environment
-- [ ] Test basic API call with simple prompt
+- [x] Add OpenAI dependency
+- [x] Create AI service class with API key from environment
+- [x] Test basic API call with simple prompt
 
-**Commit**: "Add OpenAI client integration"
+**Commit**: "Add OpenAI client integration" ✅ **COMPLETED**
 
 ### Task 4.2: Hacker News Summarization & Classification
 
-- [ ] Define user interest statements (keywords/weights) for AI/LLM and AI-for-software-dev
-- [ ] Replace basic summaries with AI-generated ones for HN items
-- [ ] Classify relevance and set a `highlight` flag in metadata
+- [x] Define user interest statements (keywords/weights) for AI/LLM and AI-for-software-dev
+- [x] Replace basic summaries with AI-generated ones for HN items
+- [x] Classify relevance and set a `highlight` flag in metadata
 
-**Commit**: "Add AI summarization and relevance for HN stories"
+**Commit**: "Add AI summarization and relevance for HN stories" ✅ **COMPLETED**
 
 ### Task 4.3: Error Handling
 
