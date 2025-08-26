@@ -1,42 +1,61 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* Timeline layout for Task 3.3 */
+.timeline {
+	list-style: none;
+	margin: 24px 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.timeline-item {
+	background: #ffffff;
+	border: 1px solid #e1e5e9;
+	border-radius: 10px;
+	padding: 16px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.item-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 12px;
+	color: #6b7280;
+	margin-bottom: 6px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.source-badge {
+	background: #8b5cf6;
+	border: 1px solid #7c3aed;
+	color: #ffffff;
+	padding: 2px 8px;
+	border-radius: 999px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	font-weight: 500;
 }
 
-.card {
-  padding: 2em;
+.item-time {
+	opacity: 0.85;
+	color: #6b7280;
 }
 
-.read-the-docs {
-  color: #888;
+.item-title {
+	display: inline-block;
+	font-size: 18px;
+	font-weight: 600;
+	color: #1f2937;
+	text-decoration: none;
+}
+
+.item-title:hover {
+	text-decoration: underline;
+	color: #7c3aed;
+}
+
+.item-summary {
+	margin: 8px 0 0;
+	color: #4b5563;
+	line-height: 1.5;
 }
