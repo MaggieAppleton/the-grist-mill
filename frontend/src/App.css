@@ -59,3 +59,84 @@
 	color: #4b5563;
 	line-height: 1.5;
 }
+
+/* Mobile-friendly styling for Task 3.4 */
+@media (max-width: 768px) {
+	/* Reduce main container padding on mobile */
+	body {
+		margin: 0;
+		padding: 0;
+	}
+
+	/* Adjust main content padding */
+	div[style*="padding: 24px"] {
+		padding: 16px !important;
+	}
+
+	/* Make timeline items more compact */
+	.timeline {
+		gap: 12px;
+		margin: 16px 0 0;
+	}
+
+	.timeline-item {
+		padding: 12px;
+		border-radius: 8px;
+	}
+
+	/* Stack header elements vertically on very small screens */
+	@media (max-width: 480px) {
+		.item-header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 4px;
+		}
+
+		.item-time {
+			font-size: 11px;
+		}
+	}
+
+	/* Adjust font sizes for better mobile readability */
+	.item-title {
+		font-size: 16px;
+		line-height: 1.4;
+	}
+
+	.item-summary {
+		font-size: 14px;
+		line-height: 1.5;
+	}
+
+	/* Make source badge slightly smaller on mobile */
+	.source-badge {
+		font-size: 11px;
+		padding: 1px 6px;
+	}
+
+	/* Ensure links are easily tappable on mobile */
+	.item-title {
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+	}
+}
+
+/* Additional mobile optimizations for very small screens */
+@media (max-width: 360px) {
+	div[style*="padding: 24px"] {
+		padding: 12px !important;
+	}
+
+	.timeline-item {
+		padding: 10px;
+	}
+
+	.item-title {
+		font-size: 15px;
+	}
+
+	.item-summary {
+		font-size: 13px;
+	}
+}
