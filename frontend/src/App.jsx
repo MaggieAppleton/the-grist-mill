@@ -1,11 +1,22 @@
 import "./App.css";
 import { useEffect, useState } from "react";
 import { fetchItems } from "./services/api";
+import { format } from "date-fns";
 
 function Dashboard() {
 	const [items, setItems] = useState(null);
 	const [error, setError] = useState(null);
 	const [loading, setLoading] = useState(false);
+
+	function formatDateTime(isoString) {
+		try {
+			const date = new Date(isoString);
+			if (Number.isNaN(date.getTime())) return String(isoString);
+			return format(date, "MMMM do, yyyy 'at' h:mma");
+		} catch {
+			return String(isoString);
+		}
+	}
 
 	useEffect(() => {
 		let isMounted = true;
@@ -34,17 +45,29 @@ function Dashboard() {
 			{loading && <p>Loading…</p>}
 			{error && <p style={{ color: "red" }}>Error loading items: {error}</p>}
 			{items && (
-				<pre
-					style={{
-						background: "#0b1021",
-						color: "#d6deeb",
-						padding: 16,
-						borderRadius: 8,
-						overflowX: "auto",
-					}}
-				>
-					{JSON.stringify(items, null, 2)}
-				</pre>
+				<ul className="timeline">
+					{items.map((item) => (
+						<li key={item.id} className="timeline-item">
+							<div className="item-header">
+								<span className="source-badge">{item.source_type}</span>
+								<span className="item-time">
+									{formatDateTime(item.created_at)}
+								</span>
+							</div>
+							{item.title && (
+								<a
+									className="item-title"
+									href={item.url || undefined}
+									target={item.url ? "_blank" : undefined}
+									rel={item.url ? "noreferrer" : undefined}
+								>
+									{item.title}
+								</a>
+							)}
+							{item.summary && <p className="item-summary">{item.summary}</p>}
+						</li>
+					))}
+				</ul>
 			)}
 		</div>
 	);
