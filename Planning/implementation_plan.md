@@ -1,6 +1,6 @@
 # The Grist Mill - Implementation Plan
 
-Updated: August 17th, 2025 at 8:05pm
+Updated: August 26, 2025 8:33AM
 
 ## Overview
 
@@ -95,9 +95,9 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 3.3: Basic Timeline Layout
 
-- [ ] Create simple list component to display content items
-- [ ] Show title, summary, and timestamp for each item
-- [ ] Add basic CSS for readability
+- [x] Create simple list component to display content items
+- [x] Show title, summary, and timestamp for each item
+- [x] Add basic CSS for readability
 
 **Commit**: "Add basic timeline display"
 

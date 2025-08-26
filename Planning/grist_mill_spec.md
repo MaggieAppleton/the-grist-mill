@@ -1,6 +1,6 @@
 # The Grist Mill - Product Specification
 
-Updated: August 17th, 2025 at 3:24pm
+Updated: August 26, 2025 8:33AM
 
 ## Overview
 

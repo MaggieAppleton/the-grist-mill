@@ -1,0 +1,13 @@
+{
+	"name": "the-grist-mill",
+	"private": true,
+	"version": "0.0.0",
+	"scripts": {
+		"dev": "concurrently \"node backend/server.js\" \"npm --prefix frontend run dev\"",
+		"dev:backend": "node backend/server.js",
+		"dev:frontend": "npm --prefix frontend run dev"
+	},
+	"devDependencies": {
+		"concurrently": "^9.0.0"
+	}
+}
