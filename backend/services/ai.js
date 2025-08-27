@@ -103,13 +103,15 @@ User is interested in:
 
 Please analyze this Hacker News story and provide a JSON response with the following structure:
 {
-  "summary": "A concise, informative summary (2-3 sentences) that highlights the key technical aspects",
   "relevance_score": 7,
-  "relevance_explanation": "A brief explanation of why this is relevant or not relevant",
-  "highlight": true
+  "highlight": true,
+  "relevance_explanation": "Explain relevance succinctly; if highlight is false, set to empty string \"\""
 }
 
-Set highlight to true if relevance_score >= 7, false otherwise.
+Rules:
+- Set highlight to true if relevance_score >= 7, false otherwise.
+- Do NOT create or include a content summary at this stage.
+- Always include the field relevance_explanation. When highlight is false, set it to an empty string "".
 
 Hacker News Story:
 Title: ${hnItem.title || "No title"}
@@ -137,16 +139,14 @@ Please respond with valid JSON only.`;
 						schema: {
 							type: "object",
 							properties: {
-								summary: { type: "string" },
 								relevance_score: { type: "integer", minimum: 1, maximum: 10 },
-								relevance_explanation: { type: "string" },
 								highlight: { type: "boolean" },
+								relevance_explanation: { type: "string" },
 							},
 							required: [
-								"summary",
 								"relevance_score",
-								"relevance_explanation",
 								"highlight",
+								"relevance_explanation",
 							],
 							additionalProperties: false,
 						},
@@ -168,10 +168,13 @@ Please respond with valid JSON only.`;
 
 			return {
 				success: true,
-				summary: result.summary,
 				highlight: result.highlight,
 				relevance_score: result.relevance_score,
-				relevance_explanation: result.relevance_explanation,
+				relevance_explanation:
+					typeof result.relevance_explanation === "string" &&
+					result.relevance_explanation.trim().length > 0
+						? result.relevance_explanation
+						: undefined,
 				usage: response.usage,
 			};
 		} catch (error) {

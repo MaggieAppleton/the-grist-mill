@@ -1,5 +1,6 @@
 // Load environment variables
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const express = require("express");
 const { discoverAndHydrateHN } = require("./collectors/hackernews");
@@ -13,6 +14,32 @@ const {
 const AIService = require("./services/ai");
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Minimal HTML to text extraction for summarization
+async function fetchUrlTextContent(url) {
+	try {
+		const res = await fetch(url);
+		if (!res.ok) return null;
+		const contentType = res.headers.get("content-type") || "";
+		if (!contentType.includes("text")) return null;
+		const body = await res.text();
+		return extractReadableText(body);
+	} catch {
+		return null;
+	}
+}
+
+function extractReadableText(html) {
+	if (!html || typeof html !== "string") return null;
+	// Remove scripts/styles and tags; collapse whitespace
+	const withoutScripts = html
+		.replace(/<script[\s\S]*?<\/script>/gi, " ")
+		.replace(/<style[\s\S]*?<\/style>/gi, " ");
+	const withoutTags = withoutScripts.replace(/<[^>]+>/g, " ");
+	const collapsed = withoutTags.replace(/\s+/g, " ").trim();
+	// Limit size to avoid very long prompts
+	return collapsed.slice(0, 20000);
+}
 
 // Middleware
 app.use(express.json());
@@ -50,7 +77,10 @@ app.get("/api/items", async (req, res) => {
 app.post("/api/collectors/hackernews", async (req, res) => {
 	try {
 		const aiService = new AIService();
-		const hydrated = await discoverAndHydrateHN();
+		const hydrated = await discoverAndHydrateHN({ maxItems: 20 });
+		console.log("HN collect: hydrated count:", hydrated.length);
+		const withTitleCount = hydrated.filter((it) => it?.firebase?.title).length;
+		console.log("HN collect: items with title:", withTitleCount);
 
 		const items = [];
 		let processedCount = 0;
@@ -79,7 +109,6 @@ app.post("/api/collectors/hackernews", async (req, res) => {
 			if (aiService.isAvailable() && f.title) {
 				try {
 					const aiResult = await aiService.processHackerNewsItem(f);
-					item.summary = aiResult.summary;
 					item.highlight = aiResult.highlight;
 					// Add AI metadata to raw_content
 					const rawContent = JSON.parse(item.raw_content);
@@ -89,22 +118,33 @@ app.post("/api/collectors/hackernews", async (req, res) => {
 						usage: aiResult.usage,
 					};
 					item.raw_content = JSON.stringify(rawContent);
+
+					// Only fetch and summarize content for highlighted items
+					if (item.highlight) {
+						let contentToSummarize = null;
+						if (typeof f.text === "string" && f.text.trim().length > 0) {
+							contentToSummarize = extractReadableText(f.text) || f.text;
+						} else if (item.url) {
+							contentToSummarize = await fetchUrlTextContent(item.url);
+						}
+						if (contentToSummarize && contentToSummarize.trim().length > 0) {
+							const summaryResult = await aiService.generateSummary(
+								contentToSummarize,
+								`Source: Hacker News; Title: ${f.title || ""}`
+							);
+							item.summary = summaryResult.summary;
+						}
+					}
 					aiProcessedCount++;
 				} catch (aiError) {
 					console.warn(
 						`AI processing failed for item ${it.id}:`,
 						aiError.message
 					);
-					// Fallback to basic summary
-					item.summary = f.title
-						? `${f.title} — ${f.score ?? 0} points by ${f.by ?? "unknown"}`
-						: null;
+					// Keep summary null to avoid title-based fabrication
 				}
 			} else {
-				// Fallback to basic summary when AI is not available
-				item.summary = f.title
-					? `${f.title} — ${f.score ?? 0} points by ${f.by ?? "unknown"}`
-					: null;
+				// AI not available; do not fabricate summaries from titles
 			}
 
 			items.push(item);
@@ -160,9 +200,7 @@ async function startServer() {
 		await initializeDatabase();
 		console.log("Database initialized successfully");
 
-		// Insert sample data
-		await insertSampleData();
-		console.log("Sample data inserted successfully");
+		// Removed legacy sample data insertion
 
 		app.listen(PORT, () => {
 			console.log(`Server is running on port ${PORT}`);
