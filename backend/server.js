@@ -16,6 +16,18 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Minimal HTML to text extraction for summarization
+function buildBasicHNSummary(item) {
+	const title = item?.title ? String(item.title).trim() : "Untitled";
+	const score = Number.isFinite(item?.score) ? item.score : null;
+	const by = item?.by ? String(item.by).trim() : null;
+	const parts = [title];
+	const meta = [];
+	if (Number.isFinite(score)) meta.push(`${score} points`);
+	if (by) meta.push(`by ${by}`);
+	if (meta.length) parts.push(`— ${meta.join(" ")}`);
+	return parts.join(" ");
+}
+
 async function fetchUrlTextContent(url) {
 	try {
 		const res = await fetch(url);
@@ -128,11 +140,19 @@ app.post("/api/collectors/hackernews", async (req, res) => {
 							contentToSummarize = await fetchUrlTextContent(item.url);
 						}
 						if (contentToSummarize && contentToSummarize.trim().length > 0) {
-							const summaryResult = await aiService.generateSummary(
-								contentToSummarize,
-								`Source: Hacker News; Title: ${f.title || ""}`
-							);
-							item.summary = summaryResult.summary;
+							try {
+								const summaryResult = await aiService.generateSummary(
+									contentToSummarize,
+									`Source: Hacker News; Title: ${f.title || ""}`
+								);
+								item.summary = summaryResult.summary;
+							} catch (aiSummaryError) {
+								console.warn(
+									`AI summary failed for item ${it.id}:`,
+									aiSummaryError.message
+								);
+								item.summary = buildBasicHNSummary(f);
+							}
 						}
 					}
 					aiProcessedCount++;
@@ -141,7 +161,8 @@ app.post("/api/collectors/hackernews", async (req, res) => {
 						`AI processing failed for item ${it.id}:`,
 						aiError.message
 					);
-					// Keep summary null to avoid title-based fabrication
+					// Fall back to a basic, non-fabricated summary
+					item.summary = buildBasicHNSummary(f);
 				}
 			} else {
 				// AI not available; do not fabricate summaries from titles

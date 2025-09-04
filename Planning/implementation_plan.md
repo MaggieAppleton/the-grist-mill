@@ -132,9 +132,9 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 4.3: Error Handling
 
-- [ ] Add try/catch around AI calls
-- [ ] Fall back to basic summary when AI fails
-- [ ] Log AI failures to console
+- [x] Add try/catch around AI calls
+- [x] Fall back to basic summary when AI fails
+- [x] Log AI failures to console
 
 **Commit**: "Add AI error handling and fallbacks"
 
