@@ -16,7 +16,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 // Initialize database tables
 function initializeDatabase() {
 	return new Promise((resolve, reject) => {
-		// Create content_items table
+		// Create content_items and ai_usage tables
 		const createContentItemsTable = `
       CREATE TABLE IF NOT EXISTS content_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,14 +33,46 @@ function initializeDatabase() {
       )
     `;
 
-		db.run(createContentItemsTable, (err) => {
-			if (err) {
-				console.error("Error creating content_items table:", err.message);
-				reject(err);
-			} else {
+		const createAIUsageTable = `
+      CREATE TABLE IF NOT EXISTS ai_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        tokens_used INTEGER DEFAULT 0,
+        estimated_cost REAL DEFAULT 0,
+        requests_count INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+		const createAIUsageDateIndex = `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_usage_date ON ai_usage(date)
+    `;
+
+		db.serialize(() => {
+			db.run(createContentItemsTable, (err) => {
+				if (err) {
+					console.error("Error creating content_items table:", err.message);
+					return reject(err);
+				}
 				console.log("Content items table created or already exists.");
+			});
+
+			db.run(createAIUsageTable, (err) => {
+				if (err) {
+					console.error("Error creating ai_usage table:", err.message);
+					return reject(err);
+				}
+				console.log("AI usage table created or already exists.");
+			});
+
+			db.run(createAIUsageDateIndex, (err) => {
+				if (err) {
+					console.error("Error creating ai_usage date index:", err.message);
+					return reject(err);
+				}
+				console.log("AI usage date index created or already exists.");
 				resolve();
-			}
+			});
 		});
 	});
 }
@@ -242,6 +274,72 @@ function closeDatabase() {
 	});
 }
 
+// Get AI usage totals for a specific date (YYYY-MM-DD)
+function getAiUsageForDate(dateStr) {
+	return new Promise((resolve, reject) => {
+		const query = `
+      SELECT tokens_used, estimated_cost, requests_count
+      FROM ai_usage
+      WHERE date = ?
+    `;
+		db.get(query, [dateStr], (err, row) => {
+			if (err) {
+				console.error("Error fetching ai_usage for date:", err.message);
+				return reject(err);
+			}
+			if (!row) {
+				return resolve({
+					tokens_used: 0,
+					estimated_cost: 0,
+					requests_count: 0,
+				});
+			}
+			resolve(row);
+		});
+	});
+}
+
+// Get today's AI usage totals
+function getTodayAiUsage() {
+	const today = new Date().toISOString().slice(0, 10);
+	return getAiUsageForDate(today);
+}
+
+// Increment AI usage counters for today by the provided amounts
+function incrementAiUsage({
+	tokensUsed = 0,
+	estimatedCost = 0,
+	requestsCount = 1,
+} = {}) {
+	return new Promise((resolve, reject) => {
+		const today = new Date().toISOString().slice(0, 10);
+		const upsert = `
+      INSERT INTO ai_usage (date, tokens_used, estimated_cost, requests_count)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(date) DO UPDATE SET
+        tokens_used = tokens_used + excluded.tokens_used,
+        estimated_cost = estimated_cost + excluded.estimated_cost,
+        requests_count = requests_count + excluded.requests_count
+    `;
+		db.run(
+			upsert,
+			[
+				today,
+				Math.max(0, Math.floor(tokensUsed)),
+				Math.max(0, Number(estimatedCost) || 0),
+				Math.max(0, Math.floor(requestsCount)),
+			],
+			function (err) {
+				if (err) {
+					console.error("Error incrementing ai_usage:", err.message);
+					return reject(err);
+				}
+				resolve(this.changes);
+			}
+		);
+	});
+}
+
 module.exports = {
 	db,
 	initializeDatabase,
@@ -251,4 +349,7 @@ module.exports = {
 	insertContentItem,
 	insertContentItems,
 	closeDatabase,
+	getAiUsageForDate,
+	getTodayAiUsage,
+	incrementAiUsage,
 };

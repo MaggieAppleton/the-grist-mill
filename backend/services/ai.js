@@ -1,8 +1,15 @@
 const OpenAI = require("openai");
+const { getTodayAiUsage, incrementAiUsage } = require("../database");
 
 class AIService {
 	constructor() {
 		const apiKey = process.env.OPENAI_API_KEY;
+
+		// Configure budget and pricing (defaults align with spec; can override via env)
+		this.dailyBudgetUSD = Number(process.env.AI_DAILY_BUDGET_USD || 1.0);
+		this.costPerThousandTokensUSD = Number(
+			process.env.AI_COST_PER_1K_TOKENS_USD || 0.00015
+		);
 
 		if (!apiKey) {
 			console.warn(
@@ -17,6 +24,51 @@ class AIService {
 		});
 	}
 
+	async checkDailyBudget() {
+		try {
+			const today = await getTodayAiUsage();
+			if (
+				today &&
+				typeof today.estimated_cost === "number" &&
+				today.estimated_cost >= this.dailyBudgetUSD
+			) {
+				throw new Error("Daily AI budget exceeded");
+			}
+		} catch (err) {
+			// If usage table not available yet, allow call to proceed
+		}
+	}
+
+	computeEstimatedCostFromUsage(usage) {
+		try {
+			if (!usage) return 0;
+			const totalTokens =
+				Number(usage.total_tokens) ||
+				Number(usage.prompt_tokens || 0) + Number(usage.completion_tokens || 0);
+			if (!Number.isFinite(totalTokens) || totalTokens <= 0) return 0;
+			return (totalTokens / 1000) * this.costPerThousandTokensUSD;
+		} catch (_) {
+			return 0;
+		}
+	}
+
+	async recordUsage(usage) {
+		try {
+			if (!usage) return;
+			const totalTokens =
+				Number(usage.total_tokens) ||
+				Number(usage.prompt_tokens || 0) + Number(usage.completion_tokens || 0);
+			const estimatedCost = this.computeEstimatedCostFromUsage(usage);
+			await incrementAiUsage({
+				tokensUsed: Math.max(0, Math.floor(totalTokens || 0)),
+				estimatedCost: Math.max(0, Number(estimatedCost) || 0),
+				requestsCount: 1,
+			});
+		} catch (err) {
+			// Do not fail primary flow due to tracking issues
+		}
+	}
+
 	async testConnection() {
 		if (!this.client) {
 			throw new Error(
@@ -25,6 +77,7 @@ class AIService {
 		}
 
 		try {
+			await this.checkDailyBudget();
 			const response = await this.client.chat.completions.create({
 				model: "gpt-4o-mini",
 				messages: [
@@ -36,6 +89,8 @@ class AIService {
 				],
 				max_completion_tokens: 50,
 			});
+
+			await this.recordUsage(response.usage);
 
 			return {
 				success: true,
@@ -60,7 +115,7 @@ class AIService {
             Focus on the key points and make it useful for someone interested in AI/LLM and software development topics.
             
             ${context ? `Context: ${context}\n\n` : ""}Content: ${content}`;
-
+			await this.checkDailyBudget();
 			const response = await this.client.chat.completions.create({
 				model: "gpt-4o-mini",
 				messages: [
@@ -71,6 +126,8 @@ class AIService {
 				],
 				max_completion_tokens: 200,
 			});
+
+			await this.recordUsage(response.usage);
 
 			return {
 				success: true,
@@ -91,6 +148,7 @@ class AIService {
 		}
 
 		try {
+			await this.checkDailyBudget();
 			// Define user interest areas for AI/LLM and software development
 			const userInterests = `
 User is interested in:
@@ -153,6 +211,8 @@ Please respond with valid JSON only.`;
 					},
 				},
 			});
+
+			await this.recordUsage(response.usage);
 
 			const content = response.choices[0].message.content;
 			console.log("AI Response content:", content);

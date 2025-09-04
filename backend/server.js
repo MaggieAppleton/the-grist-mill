@@ -10,6 +10,7 @@ const {
 	getAllItems,
 	getItemsFiltered,
 	insertContentItems,
+	getTodayAiUsage,
 } = require("./database");
 const AIService = require("./services/ai");
 const app = express();
@@ -82,6 +83,35 @@ app.get("/api/items", async (req, res) => {
 	} catch (error) {
 		console.error("Error fetching items:", error);
 		res.status(500).json({ error: "Failed to fetch items" });
+	}
+});
+
+// AI usage and budget endpoint
+app.get("/api/usage", async (req, res) => {
+	try {
+		const usage = (await getTodayAiUsage()) || {
+			tokens_used: 0,
+			estimated_cost: 0,
+			requests_count: 0,
+		};
+		const date = new Date().toISOString().slice(0, 10);
+		const dailyBudgetUSD = Number(process.env.AI_DAILY_BUDGET_USD || 1.0);
+		const costPer1K = Number(process.env.AI_COST_PER_1K_TOKENS_USD || 0.00015);
+		const remaining = Math.max(
+			0,
+			dailyBudgetUSD - Number(usage.estimated_cost || 0)
+		);
+		res.json({
+			date,
+			...usage,
+			daily_budget_usd: dailyBudgetUSD,
+			remaining_budget_usd: remaining,
+			exceeded: Number(usage.estimated_cost || 0) >= dailyBudgetUSD,
+			cost_per_1k_tokens_usd: costPer1K,
+		});
+	} catch (error) {
+		console.error("Error fetching AI usage:", error);
+		res.status(500).json({ error: "Failed to fetch AI usage" });
 	}
 });
 

@@ -140,9 +140,9 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 4.4: Basic Cost Tracking
 
-- [ ] Create ai_usage table
-- [ ] Track tokens and estimated cost per request
-- [ ] Add simple daily budget check
+- [x] Create ai_usage table
+- [x] Track tokens and estimated cost per request
+- [x] Add simple daily budget check
 
 **Commit**: "Add basic AI cost tracking"
 
@@ -165,6 +165,7 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 - [ ] Move Hacker News collection logic to scheduled job
 - [ ] Schedule daily at 6 AM
 - [ ] Test job runs automatically
+- [ ] Add ability for user to manually refresh/fetch new items within the interface 
 
 **Commit**: "Add automated Hacker News collection job"
 

@@ -1,12 +1,16 @@
 import "./App.css";
 import { useEffect, useState } from "react";
-import { fetchItems } from "./services/api";
+import { fetchItems, fetchUsage } from "./services/api";
 import { format } from "date-fns";
 
 function Dashboard() {
 	const [items, setItems] = useState(null);
 	const [error, setError] = useState(null);
 	const [loading, setLoading] = useState(false);
+	const [showUsage, setShowUsage] = useState(false);
+	const [usage, setUsage] = useState(null);
+	const [usageLoading, setUsageLoading] = useState(false);
+	const [usageError, setUsageError] = useState(null);
 
 	function formatDateTime(isoString) {
 		try {
@@ -67,6 +71,24 @@ function Dashboard() {
 		};
 	}, []);
 
+	async function openUsageModal() {
+		setShowUsage(true);
+		setUsageError(null);
+		setUsageLoading(true);
+		try {
+			const data = await fetchUsage();
+			setUsage(data);
+		} catch (err) {
+			setUsageError(err.message || String(err));
+		} finally {
+			setUsageLoading(false);
+		}
+	}
+
+	function closeUsageModal() {
+		setShowUsage(false);
+	}
+
 	const sortedItems = Array.isArray(items)
 		? [...items].sort((a, b) => {
 				const aScore = getRelevanceScore(a);
@@ -83,6 +105,14 @@ function Dashboard() {
 	return (
 		<div style={{ padding: 24 }}>
 			<h1>The Grist Mill</h1>
+			<button
+				className="usage-button"
+				title="View AI usage"
+				onClick={openUsageModal}
+				aria-label="View AI usage"
+			>
+				$
+			</button>
 			{loading && <p>Loading…</p>}
 			{error && <p style={{ color: "red" }}>Error loading items: {error}</p>}
 			{sortedItems && (
@@ -129,6 +159,67 @@ function Dashboard() {
 						);
 					})}
 				</ul>
+			)}
+
+			{showUsage && (
+				<div className="modal-backdrop" role="dialog" aria-modal="true">
+					<div className="modal">
+						<div className="modal-header">
+							<h2>AI Usage</h2>
+							<button
+								className="modal-close"
+								onClick={closeUsageModal}
+								aria-label="Close"
+							>
+								×
+							</button>
+						</div>
+						<div className="modal-body">
+							{usageLoading && <p>Loading usage…</p>}
+							{usageError && (
+								<p style={{ color: "red" }}>
+									Error loading usage: {usageError}
+								</p>
+							)}
+							{!usageLoading && !usageError && usage && (
+								<div>
+									<table className="usage-table">
+										<thead>
+											<tr>
+												<th>Date</th>
+												<th>Tokens</th>
+												<th>Estimated Cost (USD)</th>
+												<th>Requests</th>
+												<th>Daily Budget</th>
+												<th>Remaining</th>
+												<th>Exceeded</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<td>{usage.date}</td>
+												<td>{usage.tokens_used}</td>
+												<td>{Number(usage.estimated_cost || 0).toFixed(6)}</td>
+												<td>{usage.requests_count}</td>
+												<td>
+													{Number(usage.daily_budget_usd || 0).toFixed(2)}
+												</td>
+												<td>
+													{Number(usage.remaining_budget_usd || 0).toFixed(6)}
+												</td>
+												<td>{usage.exceeded ? "Yes" : "No"}</td>
+											</tr>
+										</tbody>
+									</table>
+									<p className="usage-note">
+										Cost per 1K tokens: $
+										{Number(usage.cost_per_1k_tokens_usd || 0).toFixed(5)}
+									</p>
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
 			)}
 		</div>
 	);

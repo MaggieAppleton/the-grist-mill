@@ -1,7 +1,12 @@
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 const AIService = require("../services/ai");
+const { initializeDatabase, getTodayAiUsage } = require("../database");
 
 async function testAIService() {
 	console.log("Testing AI Service...\n");
+
+	await initializeDatabase();
 
 	const aiService = new AIService();
 
@@ -32,6 +37,9 @@ async function testAIService() {
 		console.log("✅ Summary generated!");
 		console.log("Summary:", summaryResult.summary);
 		console.log("Usage:", summaryResult.usage);
+
+		const todayUsage = await getTodayAiUsage();
+		console.log("\nToday's AI usage totals:", todayUsage);
 	} catch (error) {
 		console.error("❌ Test failed:", error.message);
 	}

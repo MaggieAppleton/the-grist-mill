@@ -13,3 +13,11 @@ export async function fetchItems({ limit, offset, source } = {}) {
 	}
 	return res.json();
 }
+
+export async function fetchUsage() {
+	const res = await fetch("/api/usage");
+	if (!res.ok) {
+		throw new Error(`Failed to fetch usage: ${res.status}`);
+	}
+	return res.json();
+}
