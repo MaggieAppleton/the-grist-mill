@@ -2,6 +2,9 @@ import "./App.css";
 import { useEffect, useState } from "react";
 import { fetchItems, fetchUsage, triggerHNCollection } from "./services/api";
 import { format } from "date-fns";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 
 function Dashboard() {
 	const [items, setItems] = useState(null);
@@ -225,7 +228,26 @@ function Dashboard() {
 										{item.title}
 									</a>
 								)}
-								{item.summary && <p className="item-summary">{item.summary}</p>}
+								{item.summary && (
+									<div className="item-summary">
+										<ReactMarkdown
+											remarkPlugins={[remarkGfm]}
+											rehypePlugins={[rehypeSanitize]}
+											components={{
+												a: ({ ...props }) => (
+													<a
+														{...props}
+														target="_blank"
+														rel="noopener noreferrer"
+													/>
+												),
+												p: ({ ...props }) => <p {...props} />,
+											}}
+										>
+											{item.summary}
+										</ReactMarkdown>
+									</div>
+								)}
 							</li>
 						);
 					})}

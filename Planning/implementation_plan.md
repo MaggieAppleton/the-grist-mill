@@ -1,6 +1,6 @@
 # The Grist Mill - Implementation Plan
 
-Updated: August 26, 2025 4:29P
+Updated: September 4, 2025 8:14PM
 
 ## Overview
 
@@ -180,7 +180,8 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 - [x] Add minimal delays/backoff between external API calls (Algolia/Firebase)
 - [ ] Verify no rate limit errors during daily runs
 
-**Commit**: "Add external API rate limiting"
+**Commit**: "Add external API ra
+te limiting"
 
 ### Task 6.3: Frontend Polish
 
@@ -192,11 +193,10 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 6.4: Citation Links
 
-- [ ] Add markdown rendering for summaries
-- [ ] Include Discord message links in AI prompts
-- [ ] Test clickable links in summaries
+- [x] Add markdown rendering for summaries
+- [x] Test clickable links in summaries
 
-**Commit**: "Add markdown rendering and citation links"
+**Commit**: "Add markdown rendering and citation links" ✅ **COMPLETED**
 
 ---
 
