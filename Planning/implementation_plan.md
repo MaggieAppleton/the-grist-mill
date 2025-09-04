@@ -165,7 +165,7 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 - [x] Move Hacker News collection logic to scheduled job
 - [x] Schedule daily at 6 AM
 - [x] Test job runs automatically
-- [x] Add ability for user to manually refresh/fetch new items within the interface 
+- [x] Add ability for user to manually refresh/fetch new items within the interface
 
 **Commit**: "Add automated Hacker News collection job" ✅ **COMPLETED**
 
@@ -177,26 +177,18 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 6.1: API Rate Limiting
 
-- [ ] Add minimal delays/backoff between external API calls (Algolia/Firebase)
+- [x] Add minimal delays/backoff between external API calls (Algolia/Firebase)
 - [ ] Verify no rate limit errors during daily runs
 
 **Commit**: "Add external API rate limiting"
 
-### Task 6.2: Budget Protection
-
-- [ ] Implement daily budget checking before AI calls
-- [ ] Stop processing when budget exceeded
-- [ ] Log budget status
-
-**Commit**: "Add daily AI budget protection"
-
 ### Task 6.3: Frontend Polish
 
-- [ ] Add loading spinner while fetching data
-- [ ] Add manual refresh button
-- [ ] Improve error display when no data available
+- [x] Add loading spinner while fetching data
+- [x] Add manual refresh button
+- [x] Improve error display when no data available
 
-**Commit**: "Improve frontend UX with loading states"
+**Commit**: "Improve frontend UX with loading states" ✅ **COMPLETED**
 
 ### Task 6.4: Citation Links
 

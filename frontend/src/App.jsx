@@ -72,6 +72,19 @@ function Dashboard() {
 		};
 	}, []);
 
+	async function retryFetchItems() {
+		setLoading(true);
+		setError(null);
+		try {
+			const data = await fetchItems({ limit: 20 });
+			setItems(data);
+		} catch (err) {
+			setError(err.message || String(err));
+		} finally {
+			setLoading(false);
+		}
+	}
+
 	async function openUsageModal() {
 		setShowUsage(true);
 		setUsageError(null);
@@ -96,14 +109,18 @@ function Dashboard() {
 		try {
 			// Trigger collection (returns immediately)
 			await triggerHNCollection();
-			
+
 			// Wait a moment for collection to process, then refresh items
 			setTimeout(async () => {
 				try {
 					const data = await fetchItems({ limit: 20 });
 					setItems(data);
 				} catch (fetchError) {
-					setError(`Failed to refresh items: ${fetchError.message || String(fetchError)}`);
+					setError(
+						`Failed to refresh items: ${
+							fetchError.message || String(fetchError)
+						}`
+					);
 				} finally {
 					setIsRefreshing(false);
 				}
@@ -138,7 +155,7 @@ function Dashboard() {
 						disabled={isRefreshing}
 						title="Manually refresh stories"
 					>
-						{isRefreshing ? 'Refreshing...' : 'Refresh Stories'}
+						{isRefreshing ? "Refreshing..." : "Refresh Stories"}
 					</button>
 					<button
 						className="usage-button"
@@ -150,8 +167,25 @@ function Dashboard() {
 					</button>
 				</div>
 			</div>
-			{loading && <p>Loading…</p>}
-			{error && <p style={{ color: "red" }}>Error loading items: {error}</p>}
+			{loading && (
+				<p className="loading-line">
+					<span className="spinner" aria-hidden /> Loading…
+				</p>
+			)}
+			{error && (
+				<div className="error-alert" role="alert">
+					<div className="error-message">Error loading items: {error}</div>
+					<div className="error-actions">
+						<button
+							className="retry-button"
+							onClick={retryFetchItems}
+							disabled={loading}
+						>
+							Try Again
+						</button>
+					</div>
+				</div>
+			)}
 			{sortedItems && (
 				<ul className="timeline">
 					{sortedItems.map((item) => {
@@ -196,6 +230,27 @@ function Dashboard() {
 						);
 					})}
 				</ul>
+			)}
+
+			{!loading && !error && Array.isArray(items) && items.length === 0 && (
+				<div className="empty-state">
+					<div className="empty-icon" aria-hidden>
+						📰
+					</div>
+					<h2 className="empty-title">No stories yet</h2>
+					<p className="empty-subtitle">
+						Fetch the latest Hacker News stories to get started.
+					</p>
+					<div className="empty-actions">
+						<button
+							className="refresh-button"
+							onClick={handleRefresh}
+							disabled={isRefreshing}
+						>
+							{isRefreshing ? "Fetching…" : "Fetch Latest"}
+						</button>
+					</div>
+				</div>
 			)}
 
 			{showUsage && (
