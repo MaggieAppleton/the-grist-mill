@@ -154,28 +154,20 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 
 ### Task 5.1: Cron Setup
 
-- [ ] Add node-cron dependency
-- [ ] Create basic scheduled job that runs every minute (for testing)
-- [ ] Log when job executes
+- [x] Add node-cron dependency
+- [x] Create basic scheduled job that runs every minute (for testing)
+- [x] Log when job executes
 
-**Commit**: "Add basic cron job scheduling"
+**Commit**: "Add basic cron job scheduling" ✅ **COMPLETED**
 
 ### Task 5.2: Collection Job
 
-- [ ] Move Hacker News collection logic to scheduled job
-- [ ] Schedule daily at 6 AM
-- [ ] Test job runs automatically
-- [ ] Add ability for user to manually refresh/fetch new items within the interface 
+- [x] Move Hacker News collection logic to scheduled job
+- [x] Schedule daily at 6 AM
+- [x] Test job runs automatically
+- [x] Add ability for user to manually refresh/fetch new items within the interface 
 
-**Commit**: "Add automated Hacker News collection job"
-
-### Task 5.3: Job Tracking
-
-- [ ] Create collector_runs table
-- [ ] Record job start/completion status
-- [ ] Add endpoint to view job history
-
-**Commit**: "Add job execution tracking"
+**Commit**: "Add automated Hacker News collection job" ✅ **COMPLETED**
 
 ---
 

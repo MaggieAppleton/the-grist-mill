@@ -21,3 +21,16 @@ export async function fetchUsage() {
 	}
 	return res.json();
 }
+
+export async function triggerHNCollection() {
+	const res = await fetch("/api/collectors/hackernews", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+	});
+	if (!res.ok) {
+		throw new Error(`Failed to trigger HN collection: ${res.status}`);
+	}
+	return res.json();
+}

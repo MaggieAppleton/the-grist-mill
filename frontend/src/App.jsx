@@ -1,6 +1,6 @@
 import "./App.css";
 import { useEffect, useState } from "react";
-import { fetchItems, fetchUsage } from "./services/api";
+import { fetchItems, fetchUsage, triggerHNCollection } from "./services/api";
 import { format } from "date-fns";
 
 function Dashboard() {
@@ -11,6 +11,7 @@ function Dashboard() {
 	const [usage, setUsage] = useState(null);
 	const [usageLoading, setUsageLoading] = useState(false);
 	const [usageError, setUsageError] = useState(null);
+	const [isRefreshing, setIsRefreshing] = useState(false);
 
 	function formatDateTime(isoString) {
 		try {
@@ -89,6 +90,30 @@ function Dashboard() {
 		setShowUsage(false);
 	}
 
+	async function handleRefresh() {
+		setIsRefreshing(true);
+		setError(null);
+		try {
+			// Trigger collection (returns immediately)
+			await triggerHNCollection();
+			
+			// Wait a moment for collection to process, then refresh items
+			setTimeout(async () => {
+				try {
+					const data = await fetchItems({ limit: 20 });
+					setItems(data);
+				} catch (fetchError) {
+					setError(`Failed to refresh items: ${fetchError.message || String(fetchError)}`);
+				} finally {
+					setIsRefreshing(false);
+				}
+			}, 5000); // Wait 5 seconds for collection to process
+		} catch (err) {
+			setError(`Manual refresh failed: ${err.message || String(err)}`);
+			setIsRefreshing(false);
+		}
+	}
+
 	const sortedItems = Array.isArray(items)
 		? [...items].sort((a, b) => {
 				const aScore = getRelevanceScore(a);
@@ -104,15 +129,27 @@ function Dashboard() {
 
 	return (
 		<div style={{ padding: 24 }}>
-			<h1>The Grist Mill</h1>
-			<button
-				className="usage-button"
-				title="View AI usage"
-				onClick={openUsageModal}
-				aria-label="View AI usage"
-			>
-				$
-			</button>
+			<div className="header-controls">
+				<h1>The Grist Mill</h1>
+				<div className="button-group">
+					<button
+						className="refresh-button"
+						onClick={handleRefresh}
+						disabled={isRefreshing}
+						title="Manually refresh stories"
+					>
+						{isRefreshing ? 'Refreshing...' : 'Refresh Stories'}
+					</button>
+					<button
+						className="usage-button"
+						title="View AI usage"
+						onClick={openUsageModal}
+						aria-label="View AI usage"
+					>
+						$
+					</button>
+				</div>
+			</div>
 			{loading && <p>Loading…</p>}
 			{error && <p style={{ color: "red" }}>Error loading items: {error}</p>}
 			{sortedItems && (

@@ -8,11 +8,48 @@
 	gap: 16px;
 }
 
-/* Top-right usage button */
+/* Header layout with controls */
+.header-controls {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+
+.header-controls h1 {
+	margin: 0;
+}
+
+.button-group {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+/* Refresh button */
+.refresh-button {
+	padding: 8px 16px;
+	border: 1px solid #d1d5db;
+	border-radius: 6px;
+	background: #ffffff;
+	color: #111827;
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 500;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.refresh-button:hover:not(:disabled) {
+	background: #f9fafb;
+}
+
+.refresh-button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Usage button */
 .usage-button {
-	position: fixed;
-	top: 16px;
-	right: 16px;
 	width: 36px;
 	height: 36px;
 	border-radius: 999px;

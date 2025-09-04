@@ -72,6 +72,7 @@ When I request a single incremental change to this project, follow this EXACT pr
 
 ## Available Commands
 
+- `npm run dev` runs both front and backend
 - Backend: `node backend/server.js`
 - Frontend: `cd frontend && npm run dev` | `npm run build` | `npm run preview` | `npm run lint`
 - Trigger HN ingest: `curl -X POST http://localhost:3001/api/collectors/hackernews`

@@ -3,7 +3,7 @@ const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const express = require("express");
-const { discoverAndHydrateHN } = require("./collectors/hackernews");
+const rateLimit = require("express-rate-limit");
 const {
 	initializeDatabase,
 	insertSampleData,
@@ -13,46 +13,45 @@ const {
 	getTodayAiUsage,
 } = require("./database");
 const AIService = require("./services/ai");
+const { initializeScheduler } = require("./jobs/scheduler");
+const { runHackerNewsCollection } = require("./jobs/hn-collection");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Minimal HTML to text extraction for summarization
-function buildBasicHNSummary(item) {
-	const title = item?.title ? String(item.title).trim() : "Untitled";
-	const score = Number.isFinite(item?.score) ? item.score : null;
-	const by = item?.by ? String(item.by).trim() : null;
-	const parts = [title];
-	const meta = [];
-	if (Number.isFinite(score)) meta.push(`${score} points`);
-	if (by) meta.push(`by ${by}`);
-	if (meta.length) parts.push(`— ${meta.join(" ")}`);
-	return parts.join(" ");
-}
 
-async function fetchUrlTextContent(url) {
-	try {
-		const res = await fetch(url);
-		if (!res.ok) return null;
-		const contentType = res.headers.get("content-type") || "";
-		if (!contentType.includes("text")) return null;
-		const body = await res.text();
-		return extractReadableText(body);
-	} catch {
-		return null;
-	}
-}
+// Rate limiting middleware
+const generalLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000, // 15 minutes
+	max: 100, // limit each IP to 100 requests per windowMs
+	message: {
+		error: 'Too many requests from this IP, please try again later.',
+		retryAfter: '15 minutes'
+	},
+	standardHeaders: true,
+	legacyHeaders: false,
+});
 
-function extractReadableText(html) {
-	if (!html || typeof html !== "string") return null;
-	// Remove scripts/styles and tags; collapse whitespace
-	const withoutScripts = html
-		.replace(/<script[\s\S]*?<\/script>/gi, " ")
-		.replace(/<style[\s\S]*?<\/style>/gi, " ");
-	const withoutTags = withoutScripts.replace(/<[^>]+>/g, " ");
-	const collapsed = withoutTags.replace(/\s+/g, " ").trim();
-	// Limit size to avoid very long prompts
-	return collapsed.slice(0, 20000);
-}
+const strictLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000, // 15 minutes  
+	max: 10, // limit each IP to 10 requests per windowMs
+	message: {
+		error: 'Too many requests for this resource, please try again later.',
+		retryAfter: '15 minutes'
+	},
+	standardHeaders: true,
+	legacyHeaders: false,
+});
+
+const healthLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000,
+	max: 200,
+	message: {
+		error: 'Too many health check requests, please try again later.',
+		retryAfter: '15 minutes'
+	},
+	standardHeaders: true,
+	legacyHeaders: false,
+});
 
 // Middleware
 app.use(express.json());
@@ -63,7 +62,7 @@ app.get("/", (req, res) => {
 });
 
 // API Routes
-app.get("/api/health", (req, res) => {
+app.get("/api/health", healthLimiter, (req, res) => {
 	res.json({
 		status: "healthy",
 		timestamp: new Date().toISOString(),
@@ -71,7 +70,7 @@ app.get("/api/health", (req, res) => {
 	});
 });
 
-app.get("/api/items", async (req, res) => {
+app.get("/api/items", generalLimiter, async (req, res) => {
 	try {
 		const { source, limit, offset } = req.query;
 		if (source || limit || offset) {
@@ -87,7 +86,7 @@ app.get("/api/items", async (req, res) => {
 });
 
 // AI usage and budget endpoint
-app.get("/api/usage", async (req, res) => {
+app.get("/api/usage", generalLimiter, async (req, res) => {
 	try {
 		const usage = (await getTodayAiUsage()) || {
 			tokens_used: 0,
@@ -115,109 +114,39 @@ app.get("/api/usage", async (req, res) => {
 	}
 });
 
+// Test endpoint to verify API is working
+app.post("/api/test", generalLimiter, (req, res) => {
+	console.log(`[${new Date().toISOString()}] Test endpoint hit`);
+	res.json({ message: "Test endpoint works", timestamp: new Date().toISOString() });
+});
+
 // Manual Hacker News collection trigger
-app.post("/api/collectors/hackernews", async (req, res) => {
-	try {
-		const aiService = new AIService();
-		const hydrated = await discoverAndHydrateHN({ maxItems: 20 });
-		console.log("HN collect: hydrated count:", hydrated.length);
-		const withTitleCount = hydrated.filter((it) => it?.firebase?.title).length;
-		console.log("HN collect: items with title:", withTitleCount);
-
-		const items = [];
-		let processedCount = 0;
-		let aiProcessedCount = 0;
-
-		for (const it of hydrated) {
-			const f = it.firebase || {};
-
-			// Basic item structure
-			const item = {
-				source_type: "hackernews",
-				source_id: String(it.id),
-				title: f.title || null,
-				summary: null,
-				raw_content: JSON.stringify({
-					firebase: f,
-					algolia: it.algolia || null,
-				}),
-				url:
-					f.url ||
-					(f.id ? `https://news.ycombinator.com/item?id=${f.id}` : null),
-				highlight: false,
-			};
-
-			// Try AI processing if available
-			if (aiService.isAvailable() && f.title) {
-				try {
-					const aiResult = await aiService.processHackerNewsItem(f);
-					item.highlight = aiResult.highlight;
-					// Add AI metadata to raw_content
-					const rawContent = JSON.parse(item.raw_content);
-					rawContent.ai_processing = {
-						relevance_score: aiResult.relevance_score,
-						relevance_explanation: aiResult.relevance_explanation,
-						usage: aiResult.usage,
-					};
-					item.raw_content = JSON.stringify(rawContent);
-
-					// Only fetch and summarize content for highlighted items
-					if (item.highlight) {
-						let contentToSummarize = null;
-						if (typeof f.text === "string" && f.text.trim().length > 0) {
-							contentToSummarize = extractReadableText(f.text) || f.text;
-						} else if (item.url) {
-							contentToSummarize = await fetchUrlTextContent(item.url);
-						}
-						if (contentToSummarize && contentToSummarize.trim().length > 0) {
-							try {
-								const summaryResult = await aiService.generateSummary(
-									contentToSummarize,
-									`Source: Hacker News; Title: ${f.title || ""}`
-								);
-								item.summary = summaryResult.summary;
-							} catch (aiSummaryError) {
-								console.warn(
-									`AI summary failed for item ${it.id}:`,
-									aiSummaryError.message
-								);
-								item.summary = buildBasicHNSummary(f);
-							}
-						}
-					}
-					aiProcessedCount++;
-				} catch (aiError) {
-					console.warn(
-						`AI processing failed for item ${it.id}:`,
-						aiError.message
-					);
-					// Fall back to a basic, non-fabricated summary
-					item.summary = buildBasicHNSummary(f);
-				}
+app.post("/api/collectors/hackernews", strictLimiter, (req, res) => {
+	console.log(`[${new Date().toISOString()}] API endpoint hit: /api/collectors/hackernews`);
+	
+	// Return immediately and run collection in background
+	res.json({
+		status: "ok",
+		message: "Collection started in background",
+		timestamp: new Date().toISOString(),
+	});
+	
+	// Run collection in background without blocking response
+	runHackerNewsCollection()
+		.then((result) => {
+			if (result.success) {
+				console.log(`[${new Date().toISOString()}] Background HN collection completed: ${result.inserted} items inserted`);
 			} else {
-				// AI not available; do not fabricate summaries from titles
+				console.error(`[${new Date().toISOString()}] Background HN collection failed: ${result.error}`);
 			}
-
-			items.push(item);
-			processedCount++;
-		}
-
-		const inserted = await insertContentItems(items);
-		res.json({
-			status: "ok",
-			inserted,
-			processed: processedCount,
-			ai_processed: aiProcessedCount,
-			ai_available: aiService.isAvailable(),
+		})
+		.catch((error) => {
+			console.error(`[${new Date().toISOString()}] Background HN collection error:`, error);
 		});
-	} catch (error) {
-		console.error("HN manual collect failed:", error);
-		res.status(500).json({ error: "Failed to collect Hacker News" });
-	}
 });
 
 // AI service test endpoint
-app.get("/api/ai/test", async (req, res) => {
+app.get("/api/ai/test", strictLimiter, async (req, res) => {
 	try {
 		const aiService = new AIService();
 
@@ -252,6 +181,9 @@ async function startServer() {
 		console.log("Database initialized successfully");
 
 		// Removed legacy sample data insertion
+
+		// Initialize scheduler
+		initializeScheduler();
 
 		app.listen(PORT, () => {
 			console.log(`Server is running on port ${PORT}`);
