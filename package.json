@@ -5,7 +5,9 @@
 	"scripts": {
 		"dev": "concurrently \"node backend/server.js\" \"npm --prefix frontend run dev\"",
 		"dev:backend": "node backend/server.js",
-		"dev:frontend": "npm --prefix frontend run dev"
+		"dev:frontend": "npm --prefix frontend run dev",
+		"reset:db": "lsof -i :3001 -t | xargs -r kill -9; rm -f backend/grist_mill.db; node backend/scripts/ingest_hn.js; npm run dev:backend",
+		"reset:all": "lsof -i :3001 -t | xargs -r kill -9; lsof -i :5173 -t | xargs -r kill -9; rm -f backend/grist_mill.db; node backend/scripts/ingest_hn.js; npm run dev"
 	},
 	"devDependencies": {
 		"concurrently": "^9.0.0"

@@ -50,29 +50,85 @@ function initializeDatabase() {
     `;
 
 		db.serialize(() => {
+			function proceedAfterContentItems() {
+				db.run(createAIUsageTable, (err) => {
+					if (err) {
+						console.error("Error creating ai_usage table:", err.message);
+						return reject(err);
+					}
+					console.log("AI usage table created or already exists.");
+
+					db.run(createAIUsageDateIndex, (idxErr) => {
+						if (idxErr) {
+							console.error(
+								"Error creating ai_usage date index:",
+								idxErr.message
+							);
+							return reject(idxErr);
+						}
+						console.log("AI usage date index created or already exists.");
+						resolve();
+					});
+				});
+			}
+
 			db.run(createContentItemsTable, (err) => {
 				if (err) {
 					console.error("Error creating content_items table:", err.message);
 					return reject(err);
 				}
 				console.log("Content items table created or already exists.");
-			});
 
-			db.run(createAIUsageTable, (err) => {
-				if (err) {
-					console.error("Error creating ai_usage table:", err.message);
-					return reject(err);
-				}
-				console.log("AI usage table created or already exists.");
-			});
-
-			db.run(createAIUsageDateIndex, (err) => {
-				if (err) {
-					console.error("Error creating ai_usage date index:", err.message);
-					return reject(err);
-				}
-				console.log("AI usage date index created or already exists.");
-				resolve();
+				// Ensure required columns exist; if not, drop and recreate table
+				db.all("PRAGMA table_info(content_items)", [], (infoErr, rows) => {
+					if (infoErr) {
+						console.error(
+							"Error reading content_items schema:",
+							infoErr.message
+						);
+						return reject(infoErr);
+					}
+					const existing = new Set((rows || []).map((r) => r.name));
+					const required = [
+						"id",
+						"source_type",
+						"source_id",
+						"title",
+						"summary",
+						"page_text",
+						"raw_content",
+						"url",
+						"highlight",
+						"created_at",
+						"collected_at",
+					];
+					const missing = required.filter((c) => !existing.has(c));
+					if (missing.length === 0) {
+						return proceedAfterContentItems();
+					}
+					console.warn(
+						`Resetting 'content_items' table to ensure required columns: ${missing.join(
+							", "
+						)}`
+					);
+					db.run("DROP TABLE IF EXISTS content_items", (dropErr) => {
+						if (dropErr) {
+							console.error("Error dropping content_items:", dropErr.message);
+							return reject(dropErr);
+						}
+						db.run(createContentItemsTable, (recreateErr) => {
+							if (recreateErr) {
+								console.error(
+									"Error recreating content_items table:",
+									recreateErr.message
+								);
+								return reject(recreateErr);
+							}
+							console.log("content_items table reset with correct schema.");
+							proceedAfterContentItems();
+						});
+					});
+				});
 			});
 		});
 	});
