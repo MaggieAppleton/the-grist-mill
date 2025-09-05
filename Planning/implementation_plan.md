@@ -282,3 +282,12 @@ Each task must:
 - **Phase 6**: Pleasant to use daily, no maintenance needed
 - **Phase 7**: Easy to set up on new machine/server
 - **Phase 8**: Content ranking significantly improves with user feedback, keyboard shortcuts make rating effortless
+
+---
+
+## Implementation Notes
+
+- Store cleaned Hacker News page text in DB (`page_text`) and include it in backend search.
+- HN collector now prefers `firebase.text`; otherwise fetches URL text (text content-types only), cleans and truncates to `CONTENT_CHAR_LIMIT`.
+- Added simple per-domain rate limiting and env-configurable fetch limits (`FETCH_TIMEOUT_MS`, `FETCH_MAX_RETRIES`, `DOMAIN_RATE_LIMIT_MS`, `TEXT_CONTENT_TYPES`).
+- Summarization policy unchanged: only for highlighted items, using `page_text` when available.
