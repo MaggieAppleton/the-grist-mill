@@ -34,3 +34,26 @@ export async function triggerHNCollection() {
 	}
 	return res.json();
 }
+
+export async function fetchSettings() {
+	const res = await fetch("/api/settings");
+	if (!res.ok) {
+		throw new Error(`Failed to fetch settings: ${res.status}`);
+	}
+	return res.json();
+}
+
+export async function updateSettings(settings) {
+	const res = await fetch("/api/settings", {
+		method: "PUT",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(settings),
+	});
+	if (!res.ok) {
+		const errorText = await res.text();
+		throw new Error(`Failed to update settings: ${res.status} ${errorText}`);
+	}
+	return res.json();
+}

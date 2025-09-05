@@ -114,6 +114,77 @@ app.get("/api/usage", generalLimiter, async (req, res) => {
 	}
 });
 
+// Settings endpoints
+const fs = require('fs').promises;
+
+const SETTINGS_FILE = path.join(__dirname, 'config', 'user-settings.json');
+
+// Get current settings
+app.get("/api/settings", generalLimiter, async (req, res) => {
+	try {
+		const data = await fs.readFile(SETTINGS_FILE, 'utf8');
+		const settings = JSON.parse(data);
+		res.json(settings);
+	} catch (error) {
+		console.error("Error reading settings:", error);
+		// Return default settings if file doesn't exist or is corrupted
+		const defaultSettings = {
+			hackernews: {
+				maxItems: 50,
+				keywords: [
+					"ai", "llm", "language model", "gpt", "openai", "anthropic", "claude", 
+					"llama", "transformer", "rag", "embedding", "fine-tuning", "copilot", 
+					"cursor", "code generation", "agents"
+				]
+			}
+		};
+		res.json(defaultSettings);
+	}
+});
+
+// Update settings  
+app.put("/api/settings", generalLimiter, async (req, res) => {
+	try {
+		const newSettings = req.body;
+		
+		// Basic validation
+		if (!newSettings || typeof newSettings !== 'object') {
+			return res.status(400).json({ error: "Invalid settings format" });
+		}
+		
+		if (newSettings.hackernews) {
+			const hn = newSettings.hackernews;
+			
+			// Validate maxItems
+			if (typeof hn.maxItems !== 'number' || hn.maxItems < 1 || hn.maxItems > 100) {
+				return res.status(400).json({ error: "maxItems must be a number between 1 and 100" });
+			}
+			
+			// Validate keywords
+			if (!Array.isArray(hn.keywords) || hn.keywords.length === 0) {
+				return res.status(400).json({ error: "keywords must be a non-empty array" });
+			}
+			
+			// Clean up keywords
+			hn.keywords = hn.keywords
+				.map(k => typeof k === 'string' ? k.trim() : '')
+				.filter(k => k.length > 0);
+				
+			if (hn.keywords.length === 0) {
+				return res.status(400).json({ error: "At least one valid keyword is required" });
+			}
+		}
+		
+		// Write settings to file
+		await fs.writeFile(SETTINGS_FILE, JSON.stringify(newSettings, null, 2));
+		
+		res.json({ success: true, message: "Settings updated successfully" });
+	} catch (error) {
+		console.error("Error updating settings:", error);
+		res.status(500).json({ error: "Failed to update settings" });
+	}
+});
+
 // Test endpoint to verify API is working
 app.post("/api/test", generalLimiter, (req, res) => {
 	console.log(`[${new Date().toISOString()}] Test endpoint hit`);

@@ -29,7 +29,13 @@ If port 5173 is busy, Vite will fail fast due to strictPort; free the port or ch
   npm run build
   ```
 
+## Configuration
+
+User settings for Hacker News collection (keywords, max items) can be configured through the web UI settings modal (⚙️ button) or by editing `backend/config/user-settings.json`.
+
 ## API
 
 - `GET /api/health`
 - `GET /api/items?limit=50&offset=0&source=hackernews`
+- `GET /api/settings` - Get current user settings
+- `PUT /api/settings` - Update user settings

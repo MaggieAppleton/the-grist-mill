@@ -4,14 +4,38 @@
  * - Hydrate canonical item data via official Firebase API
  */
 
-const DEFAULT_MAX_ITEMS = Number(process.env.HN_MAX_ITEMS || 50);
-const DEFAULT_QUERY = (
+const fs = require('fs');
+const path = require('path');
+
+const SETTINGS_FILE = path.join(__dirname, '..', 'config', 'user-settings.json');
+
+// Fallback defaults (same as env vars)
+const FALLBACK_MAX_ITEMS = Number(process.env.HN_MAX_ITEMS || 50);
+const FALLBACK_QUERY = (
 	process.env.HN_QUERY ||
 	"ai,llm,language model,gpt,openai,anthropic,claude,llama,transformer,rag,embedding,fine-tuning,copilot,cursor,code generation,agents"
 )
 	.split(",")
 	.map((s) => s.trim())
 	.filter(Boolean);
+
+// Read settings from JSON file with fallbacks
+function getSettings() {
+	try {
+		const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
+		const settings = JSON.parse(data);
+		return {
+			maxItems: settings.hackernews?.maxItems || FALLBACK_MAX_ITEMS,
+			keywords: settings.hackernews?.keywords || FALLBACK_QUERY
+		};
+	} catch (error) {
+		console.log(`[HN Collector] Using fallback settings: ${error.message}`);
+		return {
+			maxItems: FALLBACK_MAX_ITEMS,
+			keywords: FALLBACK_QUERY
+		};
+	}
+}
 
 function getUnixNowSeconds() {
 	return Math.floor(Date.now() / 1000);
@@ -26,11 +50,17 @@ function sleep(ms) {
 }
 
 async function discoverStories({
-	keywords = DEFAULT_QUERY,
-	maxItems = DEFAULT_MAX_ITEMS,
+	keywords,
+	maxItems,
 	since = getUnix24hAgoSeconds(),
 	pageDelayMs = 150,
 } = {}) {
+	// Get current settings if not provided
+	if (!keywords || !maxItems) {
+		const settings = getSettings();
+		keywords = keywords || settings.keywords;
+		maxItems = maxItems || settings.maxItems;
+	}
 	const collected = [];
 	const seen = new Set();
 	const hitsPerPage = Math.min(50, Math.max(10, Math.floor(maxItems / 2)));
@@ -113,11 +143,17 @@ async function discoverAndHydrateHN(options = {}) {
 }
 
 async function discoverViaFirebase({
-	keywords = DEFAULT_QUERY,
-	maxItems = DEFAULT_MAX_ITEMS,
+	keywords,
+	maxItems,
 	since = getUnix24hAgoSeconds(),
 	perRequestDelayMs = 50,
 } = {}) {
+	// Get current settings if not provided
+	if (!keywords || !maxItems) {
+		const settings = getSettings();
+		keywords = keywords || settings.keywords;
+		maxItems = maxItems || settings.maxItems;
+	}
 	const idsRes = await fetch(
 		"https://hacker-news.firebaseio.com/v0/newstories.json"
 	);
