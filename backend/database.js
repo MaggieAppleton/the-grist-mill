@@ -24,6 +24,7 @@ function initializeDatabase() {
         source_id TEXT NOT NULL,
         title TEXT,
         summary TEXT,
+        page_text TEXT,
         raw_content TEXT,
         url TEXT,
         highlight BOOLEAN DEFAULT 0,
@@ -143,7 +144,7 @@ function insertSampleData() {
 function getAllItems() {
 	return new Promise((resolve, reject) => {
 		const query = `
-      SELECT id, source_type, source_id, title, summary, raw_content, url, highlight, created_at, collected_at
+      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, created_at, collected_at
       FROM content_items 
       ORDER BY created_at DESC
     `;
@@ -172,7 +173,7 @@ function getItemsFiltered({ source, limit = 50, offset = 0 } = {}) {
 			? `WHERE ${whereClauses.join(" AND ")}`
 			: "";
 		const query = `
-      SELECT id, source_type, source_id, title, summary, raw_content, url, highlight, created_at, collected_at
+      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, created_at, collected_at
       FROM content_items
       ${whereSQL}
       ORDER BY created_at DESC
@@ -196,26 +197,30 @@ function searchItems({ query, source, limit = 50, offset = 0 } = {}) {
 	return new Promise((resolve, reject) => {
 		if (!query || typeof query !== "string" || query.trim().length === 0) {
 			// If no search query, fall back to regular filtered results
-			return getItemsFiltered({ source, limit, offset }).then(resolve).catch(reject);
+			return getItemsFiltered({ source, limit, offset })
+				.then(resolve)
+				.catch(reject);
 		}
 
 		const whereClauses = [];
 		const params = [];
-		
+
 		// Add search conditions
 		const searchTerm = `%${query.trim()}%`;
-		whereClauses.push("(title LIKE ? OR summary LIKE ? OR raw_content LIKE ?)");
-		params.push(searchTerm, searchTerm, searchTerm);
-		
+		whereClauses.push(
+			"(title LIKE ? OR summary LIKE ? OR raw_content LIKE ? OR page_text LIKE ?)"
+		);
+		params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+
 		// Add source filter if provided
 		if (source) {
 			whereClauses.push("source_type = ?");
 			params.push(source);
 		}
-		
+
 		const whereSQL = `WHERE ${whereClauses.join(" AND ")}`;
 		const searchQuery = `
-			SELECT id, source_type, source_id, title, summary, raw_content, url, highlight, created_at, collected_at
+			SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, created_at, collected_at
 			FROM content_items
 			${whereSQL}
 			ORDER BY 
@@ -223,7 +228,7 @@ function searchItems({ query, source, limit = 50, offset = 0 } = {}) {
 				created_at DESC
 			LIMIT ? OFFSET ?
 		`;
-		
+
 		// Add search term again for ORDER BY ranking
 		params.push(searchTerm, Number(limit) || 50, Number(offset) || 0);
 
@@ -242,8 +247,8 @@ function searchItems({ query, source, limit = 50, offset = 0 } = {}) {
 function insertContentItem(item) {
 	return new Promise((resolve, reject) => {
 		const insertQuery = `
-      INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, raw_content, url, highlight)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, page_text, raw_content, url, highlight)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 		db.run(
 			insertQuery,
@@ -252,6 +257,7 @@ function insertContentItem(item) {
 				item.source_id,
 				item.title || null,
 				item.summary || null,
+				item.page_text || null,
 				item.raw_content || null,
 				item.url || null,
 				item.highlight || false,
@@ -272,7 +278,7 @@ function insertContentItems(items) {
 		db.serialize(() => {
 			db.run("BEGIN TRANSACTION");
 			const stmt = db.prepare(
-				"INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, raw_content, url, highlight) VALUES (?, ?, ?, ?, ?, ?, ?)"
+				"INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, page_text, raw_content, url, highlight) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 			);
 			let insertedCount = 0;
 			for (const item of items) {
@@ -282,6 +288,7 @@ function insertContentItems(items) {
 						item.source_id,
 						item.title || null,
 						item.summary || null,
+						item.page_text || null,
 						item.raw_content || null,
 						item.url || null,
 						item.highlight || false,
