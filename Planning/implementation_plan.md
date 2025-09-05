@@ -220,13 +220,20 @@ te limiting"
 
 **Commit**: "Add initial HN sync functionality"
 
-### Task 7.3: Feed Configuration
+---
 
-- [ ] Support selecting HN feeds (top, new, best) for discovery fallback
-- [ ] Make daily item limit configurable
-- [ ] Document configuration options
+## Phase 8: Advanced Filtering & Ranking System
 
-**Commit**: "Add HN feed and limits configuration"
+**Goal**: Replace binary highlight system with intelligent multi-pass ranking that learns from user feedback
+
+### Task 8.1: Implement Advanced Filtering & Ranking
+- [ ] Implement the complete filtering and ranking system as detailed in `/planning/features/filter_rank_system.md`
+- Includes: research statement management, content embeddings, user feedback with keyboard shortcuts, hybrid scoring algorithm, and multi-statement dashboard support
+- See feature spec for detailed breakdown of 15+ sub-tasks across 5 implementation phases
+
+**Commit**: "Implement advanced filtering and ranking system"
+
+**Phase Goal**: User can manage multiple research interests, rate content relevance with keyboard shortcuts, and see dramatically improved content ranking based on their feedback.
 
 ---
 
@@ -264,9 +271,8 @@ Each task must:
 
 ### Extension Points (Future Phases)
 
-- **Phase 8+**: Add new content sources (Discord, Bluesky)
-- **Phase 9+**: Add filtering and search capabilities
-- **Phase 10+**: Improve AI prompts and add source-specific handling
+- **Phase 9+**: Add new content sources (Discord, Bluesky)
+- **Phase 10+**: Advanced ML features (active learning, ensemble methods)
 
 ## Success Metrics by Phase
 
@@ -275,3 +281,4 @@ Each task must:
 - **Phase 5**: System updates automatically without intervention
 - **Phase 6**: Pleasant to use daily, no maintenance needed
 - **Phase 7**: Easy to set up on new machine/server
+- **Phase 8**: Content ranking significantly improves with user feedback, keyboard shortcuts make rating effortless
