@@ -291,3 +291,7 @@ Each task must:
 - HN collector now prefers `firebase.text`; otherwise fetches URL text (text content-types only), cleans and truncates to `CONTENT_CHAR_LIMIT`.
 - Added simple per-domain rate limiting and env-configurable fetch limits (`FETCH_TIMEOUT_MS`, `FETCH_MAX_RETRIES`, `DOMAIN_RATE_LIMIT_MS`, `TEXT_CONTENT_TYPES`).
 - Summarization policy unchanged: only for highlighted items, using `page_text` when available.
+
+- Hacker News collection now merges Top stories with recent (last 24h) keyword-matched stories; hydrated via Firebase and filtered by a score threshold (`minPoints`, default 20).
+- Configuration: `backend/config/user-settings.json` supports `minPoints`; can be overridden via `HN_MIN_POINTS`. Merged results are truncated to `maxItems`.
+- Job and ingest now call `discoverTopAndRecentWithMinScore({ maxItems, minPoints })`. Top stories are not keyword-filtered; only the score threshold applies.
