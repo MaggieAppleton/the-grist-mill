@@ -4,10 +4,15 @@
  * - Hydrate canonical item data via official Firebase API
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const SETTINGS_FILE = path.join(__dirname, '..', 'config', 'user-settings.json');
+const SETTINGS_FILE = path.join(
+	__dirname,
+	"..",
+	"config",
+	"user-settings.json"
+);
 
 // Fallback defaults (same as env vars)
 const FALLBACK_MAX_ITEMS = Number(process.env.HN_MAX_ITEMS || 50);
@@ -19,20 +24,24 @@ const FALLBACK_QUERY = (
 	.map((s) => s.trim())
 	.filter(Boolean);
 
+const FALLBACK_MIN_POINTS = Number(process.env.HN_MIN_POINTS || 0);
+
 // Read settings from JSON file with fallbacks
 function getSettings() {
 	try {
-		const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
+		const data = fs.readFileSync(SETTINGS_FILE, "utf8");
 		const settings = JSON.parse(data);
 		return {
 			maxItems: settings.hackernews?.maxItems || FALLBACK_MAX_ITEMS,
-			keywords: settings.hackernews?.keywords || FALLBACK_QUERY
+			keywords: settings.hackernews?.keywords || FALLBACK_QUERY,
+			minPoints: settings.hackernews?.minPoints ?? FALLBACK_MIN_POINTS,
 		};
 	} catch (error) {
 		console.log(`[HN Collector] Using fallback settings: ${error.message}`);
 		return {
 			maxItems: FALLBACK_MAX_ITEMS,
-			keywords: FALLBACK_QUERY
+			keywords: FALLBACK_QUERY,
+			minPoints: FALLBACK_MIN_POINTS,
 		};
 	}
 }
@@ -139,6 +148,14 @@ async function discoverAndHydrateHN(options = {}) {
 		discovered = await discoverViaFirebase(options);
 	}
 	const hydrated = await hydrateFirebaseItems(discovered);
+
+	// Optional score threshold filtering
+	const minPoints = Number.isFinite(options.minPoints)
+		? Number(options.minPoints)
+		: getSettings().minPoints;
+	if (Number.isFinite(minPoints) && minPoints > 0) {
+		return hydrated.filter((it) => Number(it?.firebase?.score) >= minPoints);
+	}
 	return hydrated;
 }
 
@@ -191,9 +208,90 @@ async function discoverViaFirebase({
 	return collected;
 }
 
+async function discoverTopStoriesViaFirebase({
+	maxItems,
+	perRequestDelayMs = 50,
+} = {}) {
+	// Get current settings if not provided
+	if (!maxItems) {
+		const settings = getSettings();
+		maxItems = settings.maxItems;
+	}
+
+	const idsRes = await fetch(
+		"https://hacker-news.firebaseio.com/v0/topstories.json"
+	);
+	if (!idsRes.ok) {
+		throw new Error(
+			`Firebase topstories failed: ${idsRes.status} ${idsRes.statusText}`
+		);
+	}
+	const ids = await idsRes.json();
+	const collected = [];
+	for (const id of ids) {
+		if (collected.length >= maxItems) break;
+		try {
+			const itemRes = await fetch(
+				`https://hacker-news.firebaseio.com/v0/item/${id}.json`
+			);
+			if (!itemRes.ok) continue;
+			const item = await itemRes.json();
+			if (!item || item.type !== "story") continue;
+			collected.push({
+				id: Number(item.id),
+				hit: { title: item.title, url: item.url },
+			});
+			if (perRequestDelayMs > 0) await sleep(perRequestDelayMs);
+		} catch (_) {}
+	}
+	return collected;
+}
+
+async function discoverTopAndRecentWithMinScore(options = {}) {
+	const settings = getSettings();
+	const mergedOptions = {
+		maxItems: options.maxItems || settings.maxItems,
+		keywords: options.keywords || settings.keywords,
+		minPoints: Number.isFinite(options.minPoints)
+			? options.minPoints
+			: settings.minPoints,
+	};
+
+	// Fetch top stories and recent keyword stories
+	const [top, recent] = await Promise.all([
+		discoverTopStoriesViaFirebase({ maxItems: mergedOptions.maxItems }),
+		(async () => {
+			try {
+				return await discoverStories(mergedOptions);
+			} catch (_) {
+				return await discoverViaFirebase(mergedOptions);
+			}
+		})(),
+	]);
+
+	// Merge by id
+	const byId = new Map();
+	for (const it of [...top, ...recent]) {
+		if (!byId.has(it.id)) byId.set(it.id, it);
+	}
+
+	// Hydrate and apply score threshold
+	const hydrated = await hydrateFirebaseItems(Array.from(byId.values()));
+	const minPoints = Number(mergedOptions.minPoints) || 0;
+	const filtered =
+		minPoints > 0
+			? hydrated.filter((it) => Number(it?.firebase?.score) >= minPoints)
+			: hydrated;
+
+	// Truncate to maxItems
+	return filtered.slice(0, mergedOptions.maxItems);
+}
+
 module.exports = {
 	discoverStories,
 	hydrateFirebaseItems,
 	discoverAndHydrateHN,
 	discoverViaFirebase,
+	discoverTopStoriesViaFirebase,
+	discoverTopAndRecentWithMinScore,
 };

@@ -1,4 +1,6 @@
-const { discoverAndHydrateHN } = require("../collectors/hackernews");
+const {
+	discoverTopAndRecentWithMinScore,
+} = require("../collectors/hackernews");
 const { insertContentItems } = require("../database");
 const AIService = require("../services/ai");
 
@@ -117,7 +119,7 @@ async function runHackerNewsCollection() {
 
 		// Add timeout wrapper to prevent hanging
 		const hydrated = await Promise.race([
-			discoverAndHydrateHN({ maxItems: 20 }),
+			discoverTopAndRecentWithMinScore({ maxItems: 20, minPoints: 20 }),
 			new Promise((_, reject) =>
 				setTimeout(
 					() => reject(new Error("HN discovery timeout after 30 seconds")),

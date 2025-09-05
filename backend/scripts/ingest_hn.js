@@ -3,7 +3,9 @@ const {
 	insertContentItems,
 	closeDatabase,
 } = require("../database");
-const { discoverAndHydrateHN } = require("../collectors/hackernews");
+const {
+	discoverTopAndRecentWithMinScore,
+} = require("../collectors/hackernews");
 
 function mapHydratedToContentItems(hydrated) {
 	return hydrated.map((it) => {
@@ -25,7 +27,7 @@ function mapHydratedToContentItems(hydrated) {
 (async () => {
 	try {
 		await initializeDatabase();
-		const hydrated = await discoverAndHydrateHN();
+		const hydrated = await discoverTopAndRecentWithMinScore({ minPoints: 20 });
 		const items = mapHydratedToContentItems(hydrated);
 		const inserted = await insertContentItems(items);
 		console.log(`Inserted ${inserted} Hacker News items.`);

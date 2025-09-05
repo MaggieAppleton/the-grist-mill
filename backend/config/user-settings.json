@@ -1,23 +1,24 @@
 {
-  "hackernews": {
-    "maxItems": 40,
-    "keywords": [
-      "ai",
-      "llm",
-      "language model",
-      "gpt",
-      "openai",
-      "anthropic",
-      "claude",
-      "llama",
-      "transformer",
-      "rag",
-      "embedding",
-      "fine-tuning",
-      "copilot",
-      "cursor",
-      "code generation",
-      "agents"
-    ]
-  }
+	"hackernews": {
+		"maxItems": 40,
+		"minPoints": 20,
+		"keywords": [
+			"ai",
+			"llm",
+			"language model",
+			"gpt",
+			"openai",
+			"anthropic",
+			"claude",
+			"llama",
+			"transformer",
+			"rag",
+			"embedding",
+			"fine-tuning",
+			"copilot",
+			"cursor",
+			"code generation",
+			"agents"
+		]
+	}
 }
