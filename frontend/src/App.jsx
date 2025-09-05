@@ -1,6 +1,13 @@
 import "./App.css";
 import { useEffect, useState } from "react";
-import { fetchItems, fetchUsage, triggerHNCollection, fetchSettings, updateSettings, searchItems } from "./services/api";
+import {
+	fetchItems,
+	fetchUsage,
+	triggerHNCollection,
+	fetchSettings,
+	updateSettings,
+	searchItems,
+} from "./services/api";
 import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -61,6 +68,12 @@ function Dashboard() {
 		} catch {
 			return null;
 		}
+	}
+
+	function getHNCommentsUrl(item) {
+		return item && typeof item.comments_url === "string" && item.comments_url
+			? item.comments_url
+			: null;
 	}
 
 	useEffect(() => {
@@ -190,7 +203,7 @@ function Dashboard() {
 		setIsSearching(true);
 		setSearchError(null);
 		setSearchQuery(query);
-		
+
 		try {
 			const data = await searchItems({ query: query.trim(), limit: 50 });
 			setSearchResults(data);
@@ -211,7 +224,7 @@ function Dashboard() {
 	// Use search results if available, otherwise regular items
 	const displayItems = searchResults ? searchResults.results : items;
 	const isShowingSearchResults = !!searchResults;
-	
+
 	const sortedItems = Array.isArray(displayItems)
 		? [...displayItems].sort((a, b) => {
 				const aScore = getRelevanceScore(a);
@@ -256,9 +269,9 @@ function Dashboard() {
 					</button>
 				</div>
 			</div>
-			
+
 			<div className="search-controls">
-				<SearchBar 
+				<SearchBar
 					onSearch={handleSearch}
 					onClear={clearSearch}
 					isLoading={isSearching}
@@ -270,7 +283,7 @@ function Dashboard() {
 							Found {searchResults.count} results for "{searchResults.query}"
 						</span>
 						{searchResults.count > 0 && (
-							<button 
+							<button
 								className="clear-search-button"
 								onClick={clearSearch}
 								title="Clear search"
@@ -343,6 +356,25 @@ function Dashboard() {
 									>
 										{item.title}
 									</a>
+								)}
+								{getHNCommentsUrl(item) && (
+									<span
+										className="item-links"
+										style={{ marginTop: 6, display: "block" }}
+									>
+										<a
+											className="comments-link"
+											href={getHNCommentsUrl(item)}
+											target="_blank"
+											rel="noreferrer"
+											title="View on Hacker News"
+										>
+											<span className="hn-badge" aria-label="Hacker News">
+												HN
+											</span>{" "}
+											comments
+										</a>
+									</span>
 								)}
 								{item.summary && (
 									<div className="item-summary">
@@ -469,14 +501,14 @@ function Dashboard() {
 function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 	const [formData, setFormData] = useState({
 		maxItems: 50,
-		keywords: ""
+		keywords: "",
 	});
 
 	useEffect(() => {
 		if (settings?.hackernews) {
 			setFormData({
 				maxItems: settings.hackernews.maxItems || 50,
-				keywords: (settings.hackernews.keywords || []).join(", ")
+				keywords: (settings.hackernews.keywords || []).join(", "),
 			});
 		}
 	}, [settings]);
@@ -485,16 +517,16 @@ function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 		e.preventDefault();
 		const keywordArray = formData.keywords
 			.split(",")
-			.map(k => k.trim())
-			.filter(k => k.length > 0);
-		
+			.map((k) => k.trim())
+			.filter((k) => k.length > 0);
+
 		const newSettings = {
 			hackernews: {
 				maxItems: parseInt(formData.maxItems, 10),
-				keywords: keywordArray
-			}
+				keywords: keywordArray,
+			},
 		};
-		
+
 		onSave(newSettings);
 	}
 
@@ -503,20 +535,14 @@ function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 			<div className="modal">
 				<div className="modal-header">
 					<h2>Settings</h2>
-					<button
-						className="modal-close"
-						onClick={onClose}
-						aria-label="Close"
-					>
+					<button className="modal-close" onClick={onClose} aria-label="Close">
 						×
 					</button>
 				</div>
 				<div className="modal-body">
 					{loading && <p>Loading settings…</p>}
 					{error && (
-						<p style={{ color: "red" }}>
-							Error loading settings: {error}
-						</p>
+						<p style={{ color: "red" }}>Error loading settings: {error}</p>
 					)}
 					{!loading && !error && settings && (
 						<form onSubmit={handleSubmit}>
@@ -528,10 +554,12 @@ function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 									min="1"
 									max="100"
 									value={formData.maxItems}
-									onChange={(e) => setFormData(prev => ({
-										...prev,
-										maxItems: parseInt(e.target.value, 10) || 1
-									}))}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											maxItems: parseInt(e.target.value, 10) || 1,
+										}))
+									}
 									disabled={saving}
 								/>
 								<small>Number of stories to collect (1-100)</small>
@@ -542,10 +570,12 @@ function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 									id="keywords"
 									rows="4"
 									value={formData.keywords}
-									onChange={(e) => setFormData(prev => ({
-										...prev,
-										keywords: e.target.value
-									}))}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											keywords: e.target.value,
+										}))
+									}
 									disabled={saving}
 									placeholder="ai, llm, machine learning, etc."
 								/>
@@ -560,11 +590,7 @@ function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 								>
 									Cancel
 								</button>
-								<button
-									type="submit"
-									className="save-button"
-									disabled={saving}
-								>
+								<button type="submit" className="save-button" disabled={saving}>
 									{saving ? "Saving…" : "Save Settings"}
 								</button>
 							</div>
@@ -597,7 +623,7 @@ function SearchBar({ onSearch, onClear, isLoading, currentQuery }) {
 	function handleInputChange(e) {
 		const value = e.target.value;
 		setQuery(value);
-		
+
 		// If user clears the input, clear search results immediately
 		if (value.trim().length === 0) {
 			onClear();
