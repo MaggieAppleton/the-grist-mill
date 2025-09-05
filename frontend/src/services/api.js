@@ -57,3 +57,21 @@ export async function updateSettings(settings) {
 	}
 	return res.json();
 }
+
+export async function searchItems({ query, source, limit, offset } = {}) {
+	const params = new URLSearchParams();
+	if (!query || query.trim().length === 0) {
+		throw new Error("Search query is required");
+	}
+	params.set("q", query.trim());
+	if (source) params.set("source", source);
+	if (limit != null) params.set("limit", String(limit));
+	if (offset != null) params.set("offset", String(offset));
+
+	const url = `/api/search?${params.toString()}`;
+	const res = await fetch(url);
+	if (!res.ok) {
+		throw new Error(`Failed to search items: ${res.status}`);
+	}
+	return res.json();
+}

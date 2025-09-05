@@ -191,6 +191,53 @@ function getItemsFiltered({ source, limit = 50, offset = 0 } = {}) {
 	});
 }
 
+// Search items by query string across title, summary, and raw content
+function searchItems({ query, source, limit = 50, offset = 0 } = {}) {
+	return new Promise((resolve, reject) => {
+		if (!query || typeof query !== "string" || query.trim().length === 0) {
+			// If no search query, fall back to regular filtered results
+			return getItemsFiltered({ source, limit, offset }).then(resolve).catch(reject);
+		}
+
+		const whereClauses = [];
+		const params = [];
+		
+		// Add search conditions
+		const searchTerm = `%${query.trim()}%`;
+		whereClauses.push("(title LIKE ? OR summary LIKE ? OR raw_content LIKE ?)");
+		params.push(searchTerm, searchTerm, searchTerm);
+		
+		// Add source filter if provided
+		if (source) {
+			whereClauses.push("source_type = ?");
+			params.push(source);
+		}
+		
+		const whereSQL = `WHERE ${whereClauses.join(" AND ")}`;
+		const searchQuery = `
+			SELECT id, source_type, source_id, title, summary, raw_content, url, highlight, created_at, collected_at
+			FROM content_items
+			${whereSQL}
+			ORDER BY 
+				CASE WHEN title LIKE ? THEN 1 ELSE 2 END,
+				created_at DESC
+			LIMIT ? OFFSET ?
+		`;
+		
+		// Add search term again for ORDER BY ranking
+		params.push(searchTerm, Number(limit) || 50, Number(offset) || 0);
+
+		db.all(searchQuery, params, (err, rows) => {
+			if (err) {
+				console.error("Error searching items:", err.message);
+				reject(err);
+			} else {
+				resolve(rows);
+			}
+		});
+	});
+}
+
 // Insert a single content item (ignores duplicates by UNIQUE constraint)
 function insertContentItem(item) {
 	return new Promise((resolve, reject) => {
@@ -346,6 +393,7 @@ module.exports = {
 	insertSampleData,
 	getAllItems,
 	getItemsFiltered,
+	searchItems,
 	insertContentItem,
 	insertContentItems,
 	closeDatabase,

@@ -1,6 +1,6 @@
 import "./App.css";
 import { useEffect, useState } from "react";
-import { fetchItems, fetchUsage, triggerHNCollection, fetchSettings, updateSettings } from "./services/api";
+import { fetchItems, fetchUsage, triggerHNCollection, fetchSettings, updateSettings, searchItems } from "./services/api";
 import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -20,6 +20,10 @@ function Dashboard() {
 	const [settingsLoading, setSettingsLoading] = useState(false);
 	const [settingsError, setSettingsError] = useState(null);
 	const [settingsSaving, setSettingsSaving] = useState(false);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [searchResults, setSearchResults] = useState(null);
+	const [isSearching, setIsSearching] = useState(false);
+	const [searchError, setSearchError] = useState(null);
 
 	function formatDateTime(isoString) {
 		try {
@@ -174,8 +178,42 @@ function Dashboard() {
 		}
 	}
 
-	const sortedItems = Array.isArray(items)
-		? [...items].sort((a, b) => {
+	async function handleSearch(query) {
+		if (!query || query.trim().length === 0) {
+			// Clear search results and show regular items
+			setSearchResults(null);
+			setSearchError(null);
+			setSearchQuery("");
+			return;
+		}
+
+		setIsSearching(true);
+		setSearchError(null);
+		setSearchQuery(query);
+		
+		try {
+			const data = await searchItems({ query: query.trim(), limit: 50 });
+			setSearchResults(data);
+		} catch (err) {
+			setSearchError(err.message || String(err));
+			setSearchResults(null);
+		} finally {
+			setIsSearching(false);
+		}
+	}
+
+	function clearSearch() {
+		setSearchQuery("");
+		setSearchResults(null);
+		setSearchError(null);
+	}
+
+	// Use search results if available, otherwise regular items
+	const displayItems = searchResults ? searchResults.results : items;
+	const isShowingSearchResults = !!searchResults;
+	
+	const sortedItems = Array.isArray(displayItems)
+		? [...displayItems].sort((a, b) => {
 				const aScore = getRelevanceScore(a);
 				const bScore = getRelevanceScore(b);
 				const normA = typeof aScore === "number" ? aScore : -1;
@@ -217,6 +255,36 @@ function Dashboard() {
 						⚙️
 					</button>
 				</div>
+			</div>
+			
+			<div className="search-controls">
+				<SearchBar 
+					onSearch={handleSearch}
+					onClear={clearSearch}
+					isLoading={isSearching}
+					currentQuery={searchQuery}
+				/>
+				{isShowingSearchResults && searchResults && (
+					<div className="search-status">
+						<span className="search-results-info">
+							Found {searchResults.count} results for "{searchResults.query}"
+						</span>
+						{searchResults.count > 0 && (
+							<button 
+								className="clear-search-button"
+								onClick={clearSearch}
+								title="Clear search"
+							>
+								× Clear
+							</button>
+						)}
+					</div>
+				)}
+				{searchError && (
+					<div className="error-alert search-error" role="alert">
+						Search error: {searchError}
+					</div>
+				)}
 			</div>
 			{loading && (
 				<p className="loading-line">
@@ -505,6 +573,69 @@ function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+function SearchBar({ onSearch, onClear, isLoading, currentQuery }) {
+	const [query, setQuery] = useState("");
+
+	// Sync with external currentQuery prop
+	useEffect(() => {
+		setQuery(currentQuery || "");
+	}, [currentQuery]);
+
+	function handleSubmit(e) {
+		e.preventDefault();
+		onSearch(query);
+	}
+
+	function handleClear() {
+		setQuery("");
+		onClear();
+	}
+
+	function handleInputChange(e) {
+		const value = e.target.value;
+		setQuery(value);
+		
+		// If user clears the input, clear search results immediately
+		if (value.trim().length === 0) {
+			onClear();
+		}
+	}
+
+	return (
+		<form className="search-form" onSubmit={handleSubmit}>
+			<div className="search-input-group">
+				<input
+					type="text"
+					className="search-input"
+					placeholder="Search stories..."
+					value={query}
+					onChange={handleInputChange}
+					disabled={isLoading}
+				/>
+				<button
+					type="submit"
+					className="search-button"
+					disabled={isLoading || !query.trim()}
+					title="Search"
+				>
+					{isLoading ? "..." : "🔍"}
+				</button>
+				{query && (
+					<button
+						type="button"
+						className="clear-input-button"
+						onClick={handleClear}
+						disabled={isLoading}
+						title="Clear search"
+					>
+						×
+					</button>
+				)}
+			</div>
+		</form>
 	);
 }
 

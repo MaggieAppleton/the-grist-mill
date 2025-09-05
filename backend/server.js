@@ -9,6 +9,7 @@ const {
 	insertSampleData,
 	getAllItems,
 	getItemsFiltered,
+	searchItems,
 	insertContentItems,
 	getTodayAiUsage,
 } = require("./database");
@@ -82,6 +83,34 @@ app.get("/api/items", generalLimiter, async (req, res) => {
 	} catch (error) {
 		console.error("Error fetching items:", error);
 		res.status(500).json({ error: "Failed to fetch items" });
+	}
+});
+
+// Search endpoint
+app.get("/api/search", generalLimiter, async (req, res) => {
+	try {
+		const { q: query, source, limit, offset } = req.query;
+		
+		if (!query || typeof query !== "string" || query.trim().length === 0) {
+			return res.status(400).json({ error: "Search query parameter 'q' is required" });
+		}
+		
+		const items = await searchItems({ 
+			query: query.trim(), 
+			source, 
+			limit: Number(limit) || 50, 
+			offset: Number(offset) || 0 
+		});
+		
+		res.json({
+			query: query.trim(),
+			results: items,
+			count: items.length,
+			has_more: items.length === (Number(limit) || 50)
+		});
+	} catch (error) {
+		console.error("Error searching items:", error);
+		res.status(500).json({ error: "Failed to search items" });
 	}
 });
 

@@ -510,3 +510,131 @@
 		font-size: 13px;
 	}
 }
+
+/* Search controls */
+.search-controls {
+	margin: 16px 0 24px 0;
+}
+
+.search-form {
+	margin-bottom: 12px;
+}
+
+.search-input-group {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	max-width: 600px;
+}
+
+.search-input {
+	flex: 1;
+	padding: 10px 12px;
+	border: 1px solid #d1d5db;
+	border-radius: 6px;
+	font-size: 14px;
+	color: #374151;
+	background: white;
+	outline: none;
+}
+
+.search-input:focus {
+	border-color: #7c3aed;
+	box-shadow: 0 0 0 3px rgb(124 58 237 / 10%);
+}
+
+.search-input:disabled {
+	background: #f9fafb;
+	color: #6b7280;
+	cursor: not-allowed;
+}
+
+.search-button {
+	padding: 10px 16px;
+	border: 1px solid #7c3aed;
+	border-radius: 6px;
+	background: #7c3aed;
+	color: white;
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 500;
+	min-width: 50px;
+}
+
+.search-button:hover:not(:disabled) {
+	background: #6d28d9;
+	border-color: #6d28d9;
+}
+
+.search-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.clear-input-button {
+	background: #f3f4f6;
+	border: 1px solid #d1d5db;
+	border-radius: 4px;
+	color: #6b7280;
+	cursor: pointer;
+	font-size: 16px;
+	font-weight: bold;
+	line-height: 1;
+	padding: 8px 10px;
+}
+
+.clear-input-button:hover:not(:disabled) {
+	background: #e5e7eb;
+	color: #374151;
+}
+
+.clear-input-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.search-status {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-top: 8px;
+	font-size: 14px;
+	color: #6b7280;
+}
+
+.search-results-info {
+	font-weight: 500;
+}
+
+.clear-search-button {
+	background: #f3f4f6;
+	border: 1px solid #d1d5db;
+	border-radius: 4px;
+	color: #6b7280;
+	cursor: pointer;
+	font-size: 12px;
+	padding: 4px 8px;
+}
+
+.clear-search-button:hover {
+	background: #e5e7eb;
+	color: #374151;
+}
+
+.search-error {
+	margin-top: 8px;
+}
+
+/* Mobile search adjustments */
+@media (max-width: 768px) {
+	.search-input-group {
+		max-width: none;
+	}
+	
+	.search-status {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+}
