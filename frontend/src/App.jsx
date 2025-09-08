@@ -1,5 +1,5 @@
 import "./App.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	fetchItems,
 	fetchUsage,
@@ -8,22 +8,11 @@ import {
 	updateSettings,
 	searchItems,
 } from "./services/api";
-import ReactMarkdown from "react-markdown";
 import SettingsModal from "./components/modals/SettingsModal";
 import UsageModal from "./components/modals/UsageModal";
-import { formatDateTime } from "./utils/dates";
-import {
-	getRelevanceScore,
-	getRelevanceExplanation,
-	getHNCommentsUrl,
-} from "./utils/items";
-import { markdownPlugins, markdownComponents } from "./utils/markdown";
-import {
-	Search as SearchIcon,
-	Settings as SettingsIcon,
-	RefreshCcw,
-	DollarSign,
-} from "lucide-react";
+import { getRelevanceScore } from "./utils/items";
+import HeaderBar from "./components/HeaderBar/HeaderBar";
+import Timeline from "./components/Timeline/Timeline";
 
 function Dashboard() {
 	const [items, setItems] = useState(null);
@@ -202,7 +191,6 @@ function Dashboard() {
 
 	// Use search results if available, otherwise regular items
 	const displayItems = searchResults ? searchResults.results : items;
-	const isShowingSearchResults = !!searchResults;
 
 	const sortedItems = Array.isArray(displayItems)
 		? [...displayItems].sort((a, b) => {
@@ -219,72 +207,18 @@ function Dashboard() {
 
 	return (
 		<div className="container">
-			<div className="header-controls">
-				<div className="search-controls">
-					<SearchBar
-						onSearch={handleSearch}
-						onClear={clearSearch}
-						isLoading={isSearching}
-						currentQuery={searchQuery}
-					/>
-					{isShowingSearchResults && searchResults && (
-						<div className="search-status">
-							<span className="search-results-info">
-								Found {searchResults.count} results for "{searchResults.query}"
-							</span>
-							{searchResults.count > 0 && (
-								<button
-									className="clear-search-button"
-									onClick={clearSearch}
-									title="Clear search"
-								>
-									× Clear
-								</button>
-							)}
-						</div>
-					)}
-					{searchError && (
-						<div className="error-alert search-error" role="alert">
-							Search error: {searchError}
-						</div>
-					)}
-				</div>
-				<div className="button-group">
-					{isRefreshing && (
-						<span className="refreshing-inline" aria-live="polite">
-							Refreshing…
-						</span>
-					)}
-					<button
-						className="toolbar-icon-button"
-						onClick={handleRefresh}
-						disabled={isRefreshing}
-						title="Manually refresh stories"
-					>
-						{isRefreshing ? (
-							<span className="spinner" aria-hidden />
-						) : (
-							<RefreshCcw size={18} aria-hidden color="var(--dark-3)" />
-						)}
-					</button>
-					<button
-						className="toolbar-icon-button"
-						title="View AI usage"
-						onClick={openUsageModal}
-						aria-label="View AI usage"
-					>
-						<DollarSign size={18} aria-hidden color="var(--dark-3)" />
-					</button>
-					<button
-						className="toolbar-icon-button"
-						title="Settings"
-						onClick={openSettingsModal}
-						aria-label="Settings"
-					>
-						<SettingsIcon size={18} aria-hidden color="var(--dark-3)" />
-					</button>
-				</div>
-			</div>
+			<HeaderBar
+				onSearch={handleSearch}
+				onClear={clearSearch}
+				isSearching={isSearching}
+				currentQuery={searchQuery}
+				isRefreshing={isRefreshing}
+				onRefresh={handleRefresh}
+				onOpenUsage={openUsageModal}
+				onOpenSettings={openSettingsModal}
+				searchResults={searchResults}
+				searchError={searchError}
+			/>
 
 			{/* Removed dashboard-level refreshing message; indicator now inline in header */}
 
@@ -307,80 +241,7 @@ function Dashboard() {
 					</div>
 				</div>
 			)}
-			{sortedItems && (
-				<ul className="timeline">
-					{sortedItems.map((item) => {
-						const relevance = getRelevanceScore(item);
-						const explanation = getRelevanceExplanation(item);
-						const groupTitle = item.highlight
-							? explanation || undefined
-							: undefined;
-						return (
-							<li
-								key={item.id}
-								className={`timeline-item${item.highlight ? " highlight" : ""}`}
-							>
-								<div className="item-header">
-									<span className="source-badge">{item.source_type}</span>
-									<span className="badge-group" title={groupTitle}>
-										{typeof relevance === "number" && (
-											<span className="relevance-chip">{relevance}/10</span>
-										)}
-										{item.highlight && (
-											<span className="highlight-badge" aria-hidden>
-												★
-											</span>
-										)}
-									</span>
-									<span className="item-time">
-										{formatDateTime(item.created_at)}
-									</span>
-								</div>
-								{item.title && (
-									<a
-										className="item-title"
-										href={item.url || undefined}
-										target={item.url ? "_blank" : undefined}
-										rel={item.url ? "noreferrer" : undefined}
-									>
-										{item.title}
-									</a>
-								)}
-								{getHNCommentsUrl(item) && (
-									<span
-										className="item-links"
-										style={{ marginTop: 6, display: "block" }}
-									>
-										<a
-											className="comments-link"
-											href={getHNCommentsUrl(item)}
-											target="_blank"
-											rel="noreferrer"
-											title="View on Hacker News"
-										>
-											<span className="hn-badge" aria-label="Hacker News">
-												HN
-											</span>{" "}
-											comments
-										</a>
-									</span>
-								)}
-								{item.summary && (
-									<div className="item-summary">
-										<ReactMarkdown
-											remarkPlugins={markdownPlugins.remarkPlugins}
-											rehypePlugins={markdownPlugins.rehypePlugins}
-											components={markdownComponents}
-										>
-											{item.summary}
-										</ReactMarkdown>
-									</div>
-								)}
-							</li>
-						);
-					})}
-				</ul>
-			)}
+			{sortedItems && <Timeline items={sortedItems} />}
 
 			{!loading && !error && Array.isArray(items) && items.length === 0 && (
 				<div className="empty-state">
@@ -423,118 +284,6 @@ function Dashboard() {
 				/>
 			)}
 		</div>
-	);
-}
-
-function SearchBar({ onSearch, onClear, isLoading, currentQuery }) {
-	const [query, setQuery] = useState("");
-	const [isExpanded, setIsExpanded] = useState(false);
-	const inputRef = useRef(null);
-
-	// Sync with external currentQuery prop
-	useEffect(() => {
-		setQuery(currentQuery || "");
-	}, [currentQuery]);
-
-	function handleSubmit(e) {
-		e.preventDefault();
-		// If collapsed and empty, expand instead of submitting
-		if (!isExpanded && !query.trim()) {
-			setIsExpanded(true);
-			requestAnimationFrame(() => inputRef.current?.focus());
-			return;
-		}
-		onSearch(query);
-	}
-
-	function handleClear() {
-		setQuery("");
-		onClear();
-		setIsExpanded(false);
-	}
-
-	function handleInputChange(e) {
-		const value = e.target.value;
-		setQuery(value);
-
-		// If user clears the input, clear search results immediately
-		if (value.trim().length === 0) {
-			onClear();
-		}
-	}
-
-	function handleSearchButtonMouseDown(e) {
-		if (!isExpanded && !query.trim()) {
-			e.preventDefault();
-			setIsExpanded(true);
-			requestAnimationFrame(() => inputRef.current?.focus());
-		}
-	}
-
-	function handleInputBlur() {
-		// Collapse if empty after interactions complete
-		setTimeout(() => {
-			if (document.activeElement !== inputRef.current && !query.trim()) {
-				setIsExpanded(false);
-			}
-		}, 0);
-	}
-
-	function handleInputKeyDown(e) {
-		if (e.key === "Escape") {
-			if (!query.trim()) {
-				setIsExpanded(false);
-			}
-			inputRef.current?.blur();
-		}
-	}
-
-	return (
-		<form
-			className={`search-form${!isExpanded && !query ? " collapsed" : ""}`}
-			onSubmit={handleSubmit}
-		>
-			<div className="search-input-group">
-				<div className="search-field">
-					<button
-						type="submit"
-						className="search-icon-button"
-						disabled={isLoading}
-						title="Search"
-						onMouseDown={handleSearchButtonMouseDown}
-					>
-						{isLoading ? (
-							"..."
-						) : (
-							<SearchIcon size={16} aria-hidden color="var(--dark-3)" />
-						)}
-					</button>
-					<input
-						type="text"
-						className="search-input"
-						placeholder="Search stories..."
-						value={query}
-						onChange={handleInputChange}
-						disabled={isLoading}
-						ref={inputRef}
-						onFocus={() => setIsExpanded(true)}
-						onBlur={handleInputBlur}
-						onKeyDown={handleInputKeyDown}
-					/>
-					{query && (
-						<button
-							type="button"
-							className="clear-input-button"
-							onClick={handleClear}
-							disabled={isLoading}
-							title="Clear search"
-						>
-							×
-						</button>
-					)}
-				</div>
-			</div>
-		</form>
 	);
 }
 
