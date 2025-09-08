@@ -2,8 +2,6 @@ import "./App.css";
 import { useState } from "react";
 import {
 	fetchUsage,
-	fetchSettings,
-	updateSettings,
 } from "./services/api";
 import SettingsModal from "./components/modals/SettingsModal";
 import UsageModal from "./components/modals/UsageModal";
@@ -12,21 +10,26 @@ import HeaderBar from "./components/HeaderBar/HeaderBar";
 import Timeline from "./components/Timeline/Timeline";
 import useFeed from "./hooks/useFeed";
 import useSearch from "./hooks/useSearch";
+import useSettings from "./hooks/useSettings";
 
 function Dashboard() {
 	const { items, loading, error, isRefreshing, retry, refresh } = useFeed({
 		initialLimit: 20,
 	});
-	const { query: searchQuery, results: searchResults, loading: isSearching, error: searchError, run: runSearch, clear: clearSearch } = useSearch({ defaultLimit: 50 });
+	const {
+		query: searchQuery,
+		results: searchResults,
+		loading: isSearching,
+		error: searchError,
+		run: runSearch,
+		clear: clearSearch,
+	} = useSearch({ defaultLimit: 50 });
 	const [showUsage, setShowUsage] = useState(false);
 	const [usage, setUsage] = useState(null);
 	const [usageLoading, setUsageLoading] = useState(false);
 	const [usageError, setUsageError] = useState(null);
 	const [showSettings, setShowSettings] = useState(false);
-	const [settings, setSettings] = useState(null);
-	const [settingsLoading, setSettingsLoading] = useState(false);
-	const [settingsError, setSettingsError] = useState(null);
-	const [settingsSaving, setSettingsSaving] = useState(false);
+	const { settings, loading: settingsLoading, error: settingsError, saving: settingsSaving, load: loadSettings, save: saveSettings } = useSettings();
 
 	async function retryFetchItems() {
 		await retry();
@@ -52,16 +55,7 @@ function Dashboard() {
 
 	async function openSettingsModal() {
 		setShowSettings(true);
-		setSettingsError(null);
-		setSettingsLoading(true);
-		try {
-			const data = await fetchSettings();
-			setSettings(data);
-		} catch (err) {
-			setSettingsError(err.message || String(err));
-		} finally {
-			setSettingsLoading(false);
-		}
+		await loadSettings();
 	}
 
 	function closeSettingsModal() {
@@ -69,19 +63,11 @@ function Dashboard() {
 	}
 
 	async function handleSettingsSave(newSettings) {
-		setSettingsSaving(true);
-		setSettingsError(null);
-		try {
-			await updateSettings(newSettings);
-			setSettings(newSettings);
-			// Show success feedback
+		const result = await saveSettings(newSettings);
+		if (result.ok) {
 			setTimeout(() => {
 				closeSettingsModal();
 			}, 1000);
-		} catch (err) {
-			setSettingsError(err.message || String(err));
-		} finally {
-			setSettingsSaving(false);
 		}
 	}
 
