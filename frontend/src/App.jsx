@@ -180,9 +180,10 @@ function Dashboard() {
 			const POLL_INTERVAL_MS = 3000;
 			const MAX_WAIT_MS = 60000;
 			const start = Date.now();
+			const deadline = start + MAX_WAIT_MS;
 			let lastCount = Array.isArray(items) ? items.length : 0;
 
-			for (;;) {
+			while (Date.now() < deadline) {
 				try {
 					const data = await fetchItems({ limit: 20 });
 					setItems(data);
@@ -198,7 +199,6 @@ function Dashboard() {
 					);
 				}
 
-				if (Date.now() - start >= MAX_WAIT_MS) break;
 				await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
 			}
 		} catch (err) {
