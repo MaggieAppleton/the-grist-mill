@@ -41,5 +41,3 @@ export default function useSettings() {
 
 	return { settings, loading, error, saving, load, save };
 }
-
-

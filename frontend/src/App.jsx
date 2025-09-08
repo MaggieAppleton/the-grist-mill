@@ -1,8 +1,6 @@
 import "./App.css";
 import { useState } from "react";
-import {
-	fetchUsage,
-} from "./services/api";
+import { fetchUsage } from "./services/api";
 import SettingsModal from "./components/modals/SettingsModal";
 import UsageModal from "./components/modals/UsageModal";
 import { getRelevanceScore } from "./utils/items";
@@ -29,7 +27,14 @@ function Dashboard() {
 	const [usageLoading, setUsageLoading] = useState(false);
 	const [usageError, setUsageError] = useState(null);
 	const [showSettings, setShowSettings] = useState(false);
-	const { settings, loading: settingsLoading, error: settingsError, saving: settingsSaving, load: loadSettings, save: saveSettings } = useSettings();
+	const {
+		settings,
+		loading: settingsLoading,
+		error: settingsError,
+		saving: settingsSaving,
+		load: loadSettings,
+		save: saveSettings,
+	} = useSettings();
 
 	async function retryFetchItems() {
 		await retry();

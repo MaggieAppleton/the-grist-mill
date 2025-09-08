@@ -8,8 +8,11 @@ export const markdownPlugins = {
 };
 
 export const markdownComponents = {
-	a: ({ ...props }) => (
-		<a {...props} target="_blank" rel="noopener noreferrer" />
-	),
-	p: ({ ...props }) => <p {...props} />,
+	a: (props) =>
+		React.createElement("a", {
+			...props,
+			target: "_blank",
+			rel: "noopener noreferrer",
+		}),
+	p: (props) => React.createElement("p", props),
 };
