@@ -1,5 +1,5 @@
 :root {
-	font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+	font-family: "Inter", system-ui, sans-serif;
 	line-height: 1.5;
 	font-weight: 400;
 
@@ -7,19 +7,110 @@
 	color: rgba(255, 255, 255, 0.87);
 	background-color: #242424;
 
+	--light-1: #fbfbfb;
+	--light-2: #f1f1f4;
+	--light-3: #e4e4e7;
+	--light-4: #d4d4d8;
+	--light-5: #a1a1aa;
+	--light-6: #71717a;
+	--light-7: #52525b;
+
+	--dark-1: #09090b;
+	--dark-2: #18181b;
+	--dark-3: #27272a;
+	--dark-4: #3f3f46;
+	--dark-5: #52525b;
+	--dark-6: #71717a;
+	--dark-7: #a1a1aa;
+
+	--color-bg: var(--dark-1);
+	--color-card: var(--dark-2);
+	--color-elev-1: var(--dark-3);
+	--color-elev-2: var(--dark-4);
+	--color-muted: var(--dark-5);
+	--color-muted-contrast: var(--dark-6);
+	--color-border: var(--dark-4);
+
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }
 
+/* Global box-sizing reset */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+/* Sensible element resets */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+blockquote,
+dl,
+dd {
+	margin: 0;
+}
+
+/* Only remove list styles when using explicit ARIA list roles */
+ul[role="list"],
+ol[role="list"] {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+/* Make media elements easier to work with */
+img,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+	display: block;
+	max-width: 100%;
+}
+
+/* Important: allow svg icons to size themselves; do not force block/max-width here */
+svg {
+	display: inline;
+}
+
+img,
+video {
+	height: auto;
+}
+
+/* Form elements inherit typography */
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+
+/* Consistent table layout */
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
 a {
 	font-weight: 500;
-	color: #646cff;
+	color: #4aa3b8;
 	text-decoration: inherit;
 }
 a:hover {
-	color: #535bf2;
+	color: #3b879a;
 }
 
 body {
@@ -47,7 +138,7 @@ button {
 	transition: border-color 0.25s;
 }
 button:hover {
-	border-color: #646cff;
+	border-color: #4aa3b8;
 }
 button:focus,
 button:focus-visible {
@@ -57,10 +148,18 @@ button:focus-visible {
 @media (prefers-color-scheme: light) {
 	:root {
 		color: #213547;
-		background-color: #ffffff;
+		background-color: #f1f1f4;
+
+		--color-bg: var(--light-2);
+		--color-card: var(--light-1);
+		--color-elev-1: var(--light-3);
+		--color-elev-2: var(--light-4);
+		--color-muted: var(--light-5);
+		--color-muted-contrast: var(--light-6);
+		--color-border: var(--light-4);
 	}
 	a:hover {
-		color: #747bff;
+		color: #3b879a;
 	}
 	button {
 		background-color: #f9f9f9;

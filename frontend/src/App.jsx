@@ -1,5 +1,5 @@
 import "./App.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	fetchItems,
 	fetchUsage,
@@ -12,6 +12,12 @@ import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import {
+	Search as SearchIcon,
+	Settings as SettingsIcon,
+	RefreshCcw,
+	DollarSign,
+} from "lucide-react";
 
 function Dashboard() {
 	const [items, setItems] = useState(null);
@@ -170,23 +176,34 @@ function Dashboard() {
 			// Trigger collection (returns immediately)
 			await triggerHNCollection();
 
-			// Wait a moment for collection to process, then refresh items
-			setTimeout(async () => {
+			// Poll for updated items for up to ~60s
+			const POLL_INTERVAL_MS = 3000;
+			const MAX_WAIT_MS = 60000;
+			const start = Date.now();
+			let lastCount = Array.isArray(items) ? items.length : 0;
+
+			for (;;) {
 				try {
 					const data = await fetchItems({ limit: 20 });
 					setItems(data);
+					const countNow = Array.isArray(data) ? data.length : 0;
+					// If we see more items than we had, stop early
+					if (countNow > lastCount) break;
 				} catch (fetchError) {
+					// Surface error but continue polling until timeout
 					setError(
 						`Failed to refresh items: ${
 							fetchError.message || String(fetchError)
 						}`
 					);
-				} finally {
-					setIsRefreshing(false);
 				}
-			}, 5000); // Wait 5 seconds for collection to process
+
+				if (Date.now() - start >= MAX_WAIT_MS) break;
+				await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+			}
 		} catch (err) {
 			setError(`Manual refresh failed: ${err.message || String(err)}`);
+		} finally {
 			setIsRefreshing(false);
 		}
 	}
@@ -239,66 +256,76 @@ function Dashboard() {
 		: null;
 
 	return (
-		<div style={{ padding: 24 }}>
+		<div className="container">
 			<div className="header-controls">
-				<h1>The Grist Mill</h1>
+				<div className="search-controls">
+					<SearchBar
+						onSearch={handleSearch}
+						onClear={clearSearch}
+						isLoading={isSearching}
+						currentQuery={searchQuery}
+					/>
+					{isShowingSearchResults && searchResults && (
+						<div className="search-status">
+							<span className="search-results-info">
+								Found {searchResults.count} results for "{searchResults.query}"
+							</span>
+							{searchResults.count > 0 && (
+								<button
+									className="clear-search-button"
+									onClick={clearSearch}
+									title="Clear search"
+								>
+									× Clear
+								</button>
+							)}
+						</div>
+					)}
+					{searchError && (
+						<div className="error-alert search-error" role="alert">
+							Search error: {searchError}
+						</div>
+					)}
+				</div>
 				<div className="button-group">
+					{isRefreshing && (
+						<span className="refreshing-inline" aria-live="polite">
+							Refreshing…
+						</span>
+					)}
 					<button
-						className="refresh-button"
+						className="toolbar-icon-button"
 						onClick={handleRefresh}
 						disabled={isRefreshing}
 						title="Manually refresh stories"
 					>
-						{isRefreshing ? "Refreshing..." : "Refresh Stories"}
+						{isRefreshing ? (
+							<span className="spinner" aria-hidden />
+						) : (
+							<RefreshCcw size={18} aria-hidden color="var(--dark-3)" />
+						)}
 					</button>
 					<button
-						className="usage-button"
+						className="toolbar-icon-button"
 						title="View AI usage"
 						onClick={openUsageModal}
 						aria-label="View AI usage"
 					>
-						$
+						<DollarSign size={18} aria-hidden color="var(--dark-3)" />
 					</button>
 					<button
-						className="settings-button"
+						className="toolbar-icon-button"
 						title="Settings"
 						onClick={openSettingsModal}
 						aria-label="Settings"
 					>
-						⚙️
+						<SettingsIcon size={18} aria-hidden color="var(--dark-3)" />
 					</button>
 				</div>
 			</div>
 
-			<div className="search-controls">
-				<SearchBar
-					onSearch={handleSearch}
-					onClear={clearSearch}
-					isLoading={isSearching}
-					currentQuery={searchQuery}
-				/>
-				{isShowingSearchResults && searchResults && (
-					<div className="search-status">
-						<span className="search-results-info">
-							Found {searchResults.count} results for "{searchResults.query}"
-						</span>
-						{searchResults.count > 0 && (
-							<button
-								className="clear-search-button"
-								onClick={clearSearch}
-								title="Clear search"
-							>
-								× Clear
-							</button>
-						)}
-					</div>
-				)}
-				{searchError && (
-					<div className="error-alert search-error" role="alert">
-						Search error: {searchError}
-					</div>
-				)}
-			</div>
+			{/* Removed dashboard-level refreshing message; indicator now inline in header */}
+
 			{loading && (
 				<p className="loading-line">
 					<span className="spinner" aria-hidden /> Loading…
@@ -604,6 +631,8 @@ function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 
 function SearchBar({ onSearch, onClear, isLoading, currentQuery }) {
 	const [query, setQuery] = useState("");
+	const [isExpanded, setIsExpanded] = useState(false);
+	const inputRef = useRef(null);
 
 	// Sync with external currentQuery prop
 	useEffect(() => {
@@ -612,12 +641,19 @@ function SearchBar({ onSearch, onClear, isLoading, currentQuery }) {
 
 	function handleSubmit(e) {
 		e.preventDefault();
+		// If collapsed and empty, expand instead of submitting
+		if (!isExpanded && !query.trim()) {
+			setIsExpanded(true);
+			requestAnimationFrame(() => inputRef.current?.focus());
+			return;
+		}
 		onSearch(query);
 	}
 
 	function handleClear() {
 		setQuery("");
 		onClear();
+		setIsExpanded(false);
 	}
 
 	function handleInputChange(e) {
@@ -630,36 +666,76 @@ function SearchBar({ onSearch, onClear, isLoading, currentQuery }) {
 		}
 	}
 
+	function handleSearchButtonMouseDown(e) {
+		if (!isExpanded && !query.trim()) {
+			e.preventDefault();
+			setIsExpanded(true);
+			requestAnimationFrame(() => inputRef.current?.focus());
+		}
+	}
+
+	function handleInputBlur() {
+		// Collapse if empty after interactions complete
+		setTimeout(() => {
+			if (document.activeElement !== inputRef.current && !query.trim()) {
+				setIsExpanded(false);
+			}
+		}, 0);
+	}
+
+	function handleInputKeyDown(e) {
+		if (e.key === "Escape") {
+			if (!query.trim()) {
+				setIsExpanded(false);
+			}
+			inputRef.current?.blur();
+		}
+	}
+
 	return (
-		<form className="search-form" onSubmit={handleSubmit}>
+		<form
+			className={`search-form${!isExpanded && !query ? " collapsed" : ""}`}
+			onSubmit={handleSubmit}
+		>
 			<div className="search-input-group">
-				<input
-					type="text"
-					className="search-input"
-					placeholder="Search stories..."
-					value={query}
-					onChange={handleInputChange}
-					disabled={isLoading}
-				/>
-				<button
-					type="submit"
-					className="search-button"
-					disabled={isLoading || !query.trim()}
-					title="Search"
-				>
-					{isLoading ? "..." : "🔍"}
-				</button>
-				{query && (
+				<div className="search-field">
 					<button
-						type="button"
-						className="clear-input-button"
-						onClick={handleClear}
+						type="submit"
+						className="search-icon-button"
 						disabled={isLoading}
-						title="Clear search"
+						title="Search"
+						onMouseDown={handleSearchButtonMouseDown}
 					>
-						×
+						{isLoading ? (
+							"..."
+						) : (
+							<SearchIcon size={16} aria-hidden color="var(--dark-3)" />
+						)}
 					</button>
-				)}
+					<input
+						type="text"
+						className="search-input"
+						placeholder="Search stories..."
+						value={query}
+						onChange={handleInputChange}
+						disabled={isLoading}
+						ref={inputRef}
+						onFocus={() => setIsExpanded(true)}
+						onBlur={handleInputBlur}
+						onKeyDown={handleInputKeyDown}
+					/>
+					{query && (
+						<button
+							type="button"
+							className="clear-input-button"
+							onClick={handleClear}
+							disabled={isLoading}
+							title="Clear search"
+						>
+							×
+						</button>
+					)}
+				</div>
 			</div>
 		</form>
 	);
