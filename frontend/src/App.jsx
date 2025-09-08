@@ -1,15 +1,23 @@
 import "./App.css";
 import { useState } from "react";
-import { fetchUsage, fetchSettings, updateSettings, searchItems } from "./services/api";
+import {
+	fetchUsage,
+	fetchSettings,
+	updateSettings,
+} from "./services/api";
 import SettingsModal from "./components/modals/SettingsModal";
 import UsageModal from "./components/modals/UsageModal";
 import { getRelevanceScore } from "./utils/items";
 import HeaderBar from "./components/HeaderBar/HeaderBar";
 import Timeline from "./components/Timeline/Timeline";
 import useFeed from "./hooks/useFeed";
+import useSearch from "./hooks/useSearch";
 
 function Dashboard() {
-	const { items, loading, error, isRefreshing, retry, refresh } = useFeed({ initialLimit: 20 });
+	const { items, loading, error, isRefreshing, retry, refresh } = useFeed({
+		initialLimit: 20,
+	});
+	const { query: searchQuery, results: searchResults, loading: isSearching, error: searchError, run: runSearch, clear: clearSearch } = useSearch({ defaultLimit: 50 });
 	const [showUsage, setShowUsage] = useState(false);
 	const [usage, setUsage] = useState(null);
 	const [usageLoading, setUsageLoading] = useState(false);
@@ -19,12 +27,10 @@ function Dashboard() {
 	const [settingsLoading, setSettingsLoading] = useState(false);
 	const [settingsError, setSettingsError] = useState(null);
 	const [settingsSaving, setSettingsSaving] = useState(false);
-	const [searchQuery, setSearchQuery] = useState("");
-	const [searchResults, setSearchResults] = useState(null);
-	const [isSearching, setIsSearching] = useState(false);
-	const [searchError, setSearchError] = useState(null);
 
-	async function retryFetchItems() { await retry(); }
+	async function retryFetchItems() {
+		await retry();
+	}
 
 	async function openUsageModal() {
 		setShowUsage(true);
@@ -79,36 +85,8 @@ function Dashboard() {
 		}
 	}
 
-	async function handleRefresh() { await refresh(); }
-
-	async function handleSearch(query) {
-		if (!query || query.trim().length === 0) {
-			// Clear search results and show regular items
-			setSearchResults(null);
-			setSearchError(null);
-			setSearchQuery("");
-			return;
-		}
-
-		setIsSearching(true);
-		setSearchError(null);
-		setSearchQuery(query);
-
-		try {
-			const data = await searchItems({ query: query.trim(), limit: 50 });
-			setSearchResults(data);
-		} catch (err) {
-			setSearchError(err.message || String(err));
-			setSearchResults(null);
-		} finally {
-			setIsSearching(false);
-		}
-	}
-
-	function clearSearch() {
-		setSearchQuery("");
-		setSearchResults(null);
-		setSearchError(null);
+	async function handleRefresh() {
+		await refresh();
 	}
 
 	// Use search results if available, otherwise regular items
@@ -130,7 +108,7 @@ function Dashboard() {
 	return (
 		<div className="container">
 			<HeaderBar
-				onSearch={handleSearch}
+				onSearch={runSearch}
 				onClear={clearSearch}
 				isSearching={isSearching}
 				currentQuery={searchQuery}
