@@ -8,10 +8,14 @@ import {
 	updateSettings,
 	searchItems,
 } from "./services/api";
-import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSanitize from "rehype-sanitize";
+import { formatDateTime } from "./utils/dates";
+import {
+	getRelevanceScore,
+	getRelevanceExplanation,
+	getHNCommentsUrl,
+} from "./utils/items";
+import { markdownPlugins, markdownComponents } from "./utils/markdown";
 import {
 	Search as SearchIcon,
 	Settings as SettingsIcon,
@@ -37,50 +41,6 @@ function Dashboard() {
 	const [searchResults, setSearchResults] = useState(null);
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchError, setSearchError] = useState(null);
-
-	function formatDateTime(isoString) {
-		try {
-			const date = new Date(isoString);
-			if (Number.isNaN(date.getTime())) return String(isoString);
-			return format(date, "MMMM do, yyyy 'at' h:mma");
-		} catch {
-			return String(isoString);
-		}
-	}
-
-	function getRelevanceScore(item) {
-		try {
-			if (!item || !item.raw_content) return null;
-			const raw =
-				typeof item.raw_content === "string"
-					? JSON.parse(item.raw_content)
-					: item.raw_content;
-			const score = raw?.ai_processing?.relevance_score;
-			return typeof score === "number" ? score : null;
-		} catch {
-			return null;
-		}
-	}
-
-	function getRelevanceExplanation(item) {
-		try {
-			if (!item || !item.raw_content) return null;
-			const raw =
-				typeof item.raw_content === "string"
-					? JSON.parse(item.raw_content)
-					: item.raw_content;
-			const exp = raw?.ai_processing?.relevance_explanation;
-			return typeof exp === "string" && exp.trim().length > 0 ? exp : null;
-		} catch {
-			return null;
-		}
-	}
-
-	function getHNCommentsUrl(item) {
-		return item && typeof item.comments_url === "string" && item.comments_url
-			? item.comments_url
-			: null;
-	}
 
 	useEffect(() => {
 		let isMounted = true;
@@ -406,18 +366,9 @@ function Dashboard() {
 								{item.summary && (
 									<div className="item-summary">
 										<ReactMarkdown
-											remarkPlugins={[remarkGfm]}
-											rehypePlugins={[rehypeSanitize]}
-											components={{
-												a: ({ ...props }) => (
-													<a
-														{...props}
-														target="_blank"
-														rel="noopener noreferrer"
-													/>
-												),
-												p: ({ ...props }) => <p {...props} />,
-											}}
+											remarkPlugins={markdownPlugins.remarkPlugins}
+											rehypePlugins={markdownPlugins.rehypePlugins}
+											components={markdownComponents}
 										>
 											{item.summary}
 										</ReactMarkdown>
