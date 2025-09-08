@@ -1,28 +1,19 @@
 import "./App.css";
-import { useEffect, useState } from "react";
-import {
-	fetchItems,
-	fetchUsage,
-	triggerHNCollection,
-	fetchSettings,
-	updateSettings,
-	searchItems,
-} from "./services/api";
+import { useState } from "react";
+import { fetchUsage, fetchSettings, updateSettings, searchItems } from "./services/api";
 import SettingsModal from "./components/modals/SettingsModal";
 import UsageModal from "./components/modals/UsageModal";
 import { getRelevanceScore } from "./utils/items";
 import HeaderBar from "./components/HeaderBar/HeaderBar";
 import Timeline from "./components/Timeline/Timeline";
+import useFeed from "./hooks/useFeed";
 
 function Dashboard() {
-	const [items, setItems] = useState(null);
-	const [error, setError] = useState(null);
-	const [loading, setLoading] = useState(false);
+	const { items, loading, error, isRefreshing, retry, refresh } = useFeed({ initialLimit: 20 });
 	const [showUsage, setShowUsage] = useState(false);
 	const [usage, setUsage] = useState(null);
 	const [usageLoading, setUsageLoading] = useState(false);
 	const [usageError, setUsageError] = useState(null);
-	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [showSettings, setShowSettings] = useState(false);
 	const [settings, setSettings] = useState(null);
 	const [settingsLoading, setSettingsLoading] = useState(false);
@@ -33,39 +24,7 @@ function Dashboard() {
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchError, setSearchError] = useState(null);
 
-	useEffect(() => {
-		let isMounted = true;
-		setLoading(true);
-		fetchItems({ limit: 20 })
-			.then((data) => {
-				if (!isMounted) return;
-				setItems(data);
-			})
-			.catch((err) => {
-				if (!isMounted) return;
-				setError(err.message || String(err));
-			})
-			.finally(() => {
-				if (!isMounted) return;
-				setLoading(false);
-			});
-		return () => {
-			isMounted = false;
-		};
-	}, []);
-
-	async function retryFetchItems() {
-		setLoading(true);
-		setError(null);
-		try {
-			const data = await fetchItems({ limit: 20 });
-			setItems(data);
-		} catch (err) {
-			setError(err.message || String(err));
-		} finally {
-			setLoading(false);
-		}
-	}
+	async function retryFetchItems() { await retry(); }
 
 	async function openUsageModal() {
 		setShowUsage(true);
@@ -120,44 +79,7 @@ function Dashboard() {
 		}
 	}
 
-	async function handleRefresh() {
-		setIsRefreshing(true);
-		setError(null);
-		try {
-			// Trigger collection (returns immediately)
-			await triggerHNCollection();
-
-			// Poll for updated items for up to ~60s
-			const POLL_INTERVAL_MS = 3000;
-			const MAX_WAIT_MS = 60000;
-			const start = Date.now();
-			const deadline = start + MAX_WAIT_MS;
-			let lastCount = Array.isArray(items) ? items.length : 0;
-
-			while (Date.now() < deadline) {
-				try {
-					const data = await fetchItems({ limit: 20 });
-					setItems(data);
-					const countNow = Array.isArray(data) ? data.length : 0;
-					// If we see more items than we had, stop early
-					if (countNow > lastCount) break;
-				} catch (fetchError) {
-					// Surface error but continue polling until timeout
-					setError(
-						`Failed to refresh items: ${
-							fetchError.message || String(fetchError)
-						}`
-					);
-				}
-
-				await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-			}
-		} catch (err) {
-			setError(`Manual refresh failed: ${err.message || String(err)}`);
-		} finally {
-			setIsRefreshing(false);
-		}
-	}
+	async function handleRefresh() { await refresh(); }
 
 	async function handleSearch(query) {
 		if (!query || query.trim().length === 0) {
