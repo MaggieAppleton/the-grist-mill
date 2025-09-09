@@ -31,3 +31,13 @@ export function getHNCommentsUrl(item) {
 		? item.comments_url
 		: null;
 }
+
+export function extractDomain(url) {
+	if (!url || typeof url !== "string") return null;
+	try {
+		const urlObj = new URL(url.startsWith("http") ? url : `https://${url}`);
+		return urlObj.hostname.replace(/^www\./, "");
+	} catch {
+		return null;
+	}
+}

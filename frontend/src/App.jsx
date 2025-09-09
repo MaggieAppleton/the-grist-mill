@@ -12,7 +12,7 @@ import useSettings from "./hooks/useSettings";
 
 function Dashboard() {
 	const { items, loading, error, isRefreshing, retry, refresh } = useFeed({
-		initialLimit: 20,
+		initialLimit: 50,
 	});
 	const {
 		query: searchQuery,
