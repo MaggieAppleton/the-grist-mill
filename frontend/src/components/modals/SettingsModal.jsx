@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import "./Modal.css";
+import "./SettingsModal.css";
 
 function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 	const [formData, setFormData] = useState({
@@ -105,5 +107,3 @@ function SettingsModal({ settings, loading, error, saving, onClose, onSave }) {
 }
 
 export default SettingsModal;
-
-

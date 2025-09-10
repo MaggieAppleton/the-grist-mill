@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Search as SearchIcon, Settings as SettingsIcon, RefreshCcw, DollarSign } from "lucide-react";
+import "./HeaderBar.css";
+import {
+	Search as SearchIcon,
+	Settings as SettingsIcon,
+	RefreshCcw,
+	DollarSign,
+} from "lucide-react";
 
 function SearchBar({ onSearch, onClear, isLoading, currentQuery }) {
 	const [query, setQuery] = useState("");
@@ -190,5 +196,3 @@ export default function HeaderBar({
 		</div>
 	);
 }
-
-

@@ -1,0 +1,22 @@
+.usage-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+}
+
+.usage-table th,
+.usage-table td {
+	border: 1px solid #e5e7eb;
+	padding: 8px;
+	text-align: left;
+}
+
+.usage-table th {
+	background: #f9fafb;
+}
+
+.usage-note {
+	margin-top: 12px;
+	font-size: 13px;
+	color: #4b5563;
+}
