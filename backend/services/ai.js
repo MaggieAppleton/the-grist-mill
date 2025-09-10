@@ -24,6 +24,43 @@ class AIService {
 		});
 	}
 
+	async embedText(text) {
+		if (!this.client) {
+			throw new Error(
+				"OpenAI client not initialized - check OPENAI_API_KEY environment variable"
+			);
+		}
+
+		const input = String(text || "").trim();
+		if (input.length === 0) {
+			throw new Error("Text is required to generate an embedding");
+		}
+
+		try {
+			await this.checkDailyBudget();
+			const model = process.env.AI_EMBEDDING_MODEL || "text-embedding-3-small";
+			const response = await this.client.embeddings.create({
+				model,
+				input,
+			});
+
+			// Record usage if provided by API
+			await this.recordUsage(response.usage);
+
+			const vector =
+				response && response.data && response.data[0]
+					? response.data[0].embedding
+					: null;
+			if (!Array.isArray(vector)) {
+				throw new Error("Failed to generate embedding vector");
+			}
+			return { embedding: vector, usage: response.usage };
+		} catch (error) {
+			console.error("OpenAI embedding generation failed:", error.message);
+			throw error;
+		}
+	}
+
 	async checkDailyBudget() {
 		try {
 			const today = await getTodayAiUsage();

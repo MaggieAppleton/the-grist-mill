@@ -157,21 +157,25 @@ Notes:
 
 #### Task 8A.1: Backend Research Topic API
 
-- [ ] Create research statement CRUD endpoints (name/title, statement, keywords, negative_keywords, is_active)
-- [ ] Add validation for statement text (min/max length) and keyword arrays (array of non-empty strings)
-- [ ] Support for activating/deactivating topics
-- [ ] Default research topic creation
+- [x] Create research statement CRUD endpoints (name/title, statement, keywords, negative_keywords, is_active)
+- [x] Add validation for statement text (min/max length) and keyword arrays (array of non-empty strings)
+- [x] Support for activating/deactivating topics
+- [x] Default research topic creation
 
-**Commit**: "Add research topic management API"
+**Commit**: "Add research topic management API" ✅ COMPLETED (September 10, 2025)
 
 #### Task 8A.2: Frontend Research Topic UI
 
-- [ ] Settings page for managing research topics
-- [ ] Form for creating/editing: title, research statement, keywords, negative keywords
-- [ ] Toggle for active/inactive topics
-- [ ] Validation and error handling
+- [x] Settings page for managing research topics
+- [x] Form for creating/editing: title, research statement, keywords, negative keywords
+- [x] Toggle for active/inactive topics
+- [x] Validation and error handling
 
-**Commit**: "Add research topic management UI"
+**Commit**: "Add research topic management UI" ✅ COMPLETED (September 10, 2025)
+
+Follow-up:
+
+- Improve Settings modal design and information architecture (multi-panel or tabs; better hierarchy; tighter spacing).
 
 #### Task 8A.3: Statement Embedding Generation
 

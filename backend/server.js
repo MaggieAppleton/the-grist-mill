@@ -18,6 +18,7 @@ const {
 	createResearchStatement,
 	updateResearchStatement,
 	deleteResearchStatement,
+	updateResearchStatementEmbedding,
 } = require("./database");
 const AIService = require("./services/ai");
 const { initializeScheduler } = require("./jobs/scheduler");
@@ -223,11 +224,9 @@ app.post("/api/research-statements", strictLimiter, async (req, res) => {
 		const pos = normalizeStringArray(keywords);
 		const neg = normalizeStringArray(negative_keywords);
 		if (pos === null || neg === null) {
-			return res
-				.status(400)
-				.json({
-					error: "keywords and negative_keywords must be arrays of strings",
-				});
+			return res.status(400).json({
+				error: "keywords and negative_keywords must be arrays of strings",
+			});
 		}
 		const id = await createResearchStatement({
 			name: name.trim(),
@@ -236,6 +235,21 @@ app.post("/api/research-statements", strictLimiter, async (req, res) => {
 			negative_keywords: JSON.stringify(neg || []),
 			is_active: typeof is_active === "boolean" ? is_active : true,
 		});
+
+		// Attempt to generate an embedding for the statement (non-blocking failure)
+		try {
+			const aiService = new AIService();
+			if (aiService.isAvailable()) {
+				const { embedding } = await aiService.embedText(statement.trim());
+				await updateResearchStatementEmbedding(id, embedding);
+			}
+		} catch (embedErr) {
+			console.warn(
+				"Embedding generation failed for new research statement:",
+				embedErr.message
+			);
+		}
+
 		const created = await getResearchStatementById(id);
 		res.status(201).json(created);
 	} catch (err) {
@@ -279,11 +293,9 @@ app.put("/api/research-statements/:id", strictLimiter, async (req, res) => {
 		const pos = normalizeStringArray(keywords);
 		const neg = normalizeStringArray(negative_keywords);
 		if (pos === null || neg === null) {
-			return res
-				.status(400)
-				.json({
-					error: "keywords and negative_keywords must be arrays of strings",
-				});
+			return res.status(400).json({
+				error: "keywords and negative_keywords must be arrays of strings",
+			});
 		}
 		if (is_active !== undefined && typeof is_active !== "boolean") {
 			return res
@@ -300,7 +312,23 @@ app.put("/api/research-statements/:id", strictLimiter, async (req, res) => {
 		if (changes === 0) {
 			return res.status(404).json({ error: "Not found or no changes" });
 		}
-		const updated = await getResearchStatementById(id);
+		// If statement text changed, regenerate embedding (best-effort)
+		let updated = await getResearchStatementById(id);
+		try {
+			if (typeof statement === "string" && statement.trim().length >= 10) {
+				const aiService = new AIService();
+				if (aiService.isAvailable()) {
+					const { embedding } = await aiService.embedText(statement.trim());
+					await updateResearchStatementEmbedding(id, embedding);
+					updated = await getResearchStatementById(id);
+				}
+			}
+		} catch (embedErr) {
+			console.warn(
+				"Embedding regeneration failed on update:",
+				embedErr.message
+			);
+		}
 		res.json(updated);
 	} catch (err) {
 		console.error("Error updating research statement:", err);
@@ -322,6 +350,50 @@ app.delete("/api/research-statements/:id", strictLimiter, async (req, res) => {
 		res.status(500).json({ error: "Failed to delete research statement" });
 	}
 });
+
+// Regenerate embedding for a research statement
+app.post(
+	"/api/research-statements/:id/regenerate-embedding",
+	strictLimiter,
+	async (req, res) => {
+		try {
+			const id = Number(req.params.id);
+			if (!Number.isFinite(id) || id <= 0) {
+				return res.status(400).json({ error: "Invalid id" });
+			}
+
+			const row = await getResearchStatementById(id);
+			if (!row) return res.status(404).json({ error: "Not found" });
+
+			const aiService = new AIService();
+			if (!aiService.isAvailable()) {
+				return res.status(503).json({
+					error: "AI service not available",
+					message: "OPENAI_API_KEY environment variable not set",
+				});
+			}
+
+			if (
+				typeof row.statement !== "string" ||
+				row.statement.trim().length < 10
+			) {
+				return res.status(400).json({
+					error: "Statement text invalid for embedding generation",
+				});
+			}
+
+			const { embedding, usage } = await aiService.embedText(
+				row.statement.trim()
+			);
+			await updateResearchStatementEmbedding(id, embedding);
+			const updated = await getResearchStatementById(id);
+			return res.json({ ok: true, statement: updated, usage });
+		} catch (err) {
+			console.error("Error regenerating embedding:", err);
+			return res.status(500).json({ error: "Failed to regenerate embedding" });
+		}
+	}
+);
 
 // Settings endpoints
 const fs = require("fs").promises;

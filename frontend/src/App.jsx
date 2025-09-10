@@ -68,11 +68,13 @@ function Dashboard() {
 	}
 
 	async function handleSettingsSave(newSettings) {
-		const result = await saveSettings(newSettings);
-		if (result.ok) {
-			setTimeout(() => {
-				closeSettingsModal();
-			}, 1000);
+		// Close immediately for snappy UX; persist in background
+		closeSettingsModal();
+		try {
+			await saveSettings(newSettings);
+		} catch (e) {
+			// Optional: surface a toast/error later; for now, log quietly
+			console.error("Failed to save settings", e);
 		}
 	}
 

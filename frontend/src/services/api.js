@@ -75,3 +75,88 @@ export async function searchItems({ query, source, limit, offset } = {}) {
 	}
 	return res.json();
 }
+
+// Research Statements API
+
+export async function fetchResearchStatements() {
+	const res = await fetch("/api/research-statements");
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		const error = new Error(
+			`Failed to fetch research statements: ${res.status}`
+		);
+		error.status = res.status;
+		error.body = text;
+		throw error;
+	}
+	return res.json();
+}
+
+export async function createResearchStatement(payload) {
+	const res = await fetch("/api/research-statements", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload),
+	});
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		const error = new Error(
+			`Failed to create research statement: ${res.status}`
+		);
+		error.status = res.status;
+		error.body = text;
+		throw error;
+	}
+	return res.json();
+}
+
+export async function updateResearchStatement(id, payload) {
+	const res = await fetch(`/api/research-statements/${id}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload),
+	});
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		const error = new Error(
+			`Failed to update research statement: ${res.status}`
+		);
+		error.status = res.status;
+		error.body = text;
+		throw error;
+	}
+	return res.json();
+}
+
+export async function deleteResearchStatement(id) {
+	const res = await fetch(`/api/research-statements/${id}`, {
+		method: "DELETE",
+	});
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		const error = new Error(
+			`Failed to delete research statement: ${res.status}`
+		);
+		error.status = res.status;
+		error.body = text;
+		throw error;
+	}
+	return { ok: true };
+}
+
+export async function regenerateResearchStatementEmbedding(id) {
+	const res = await fetch(
+		`/api/research-statements/${id}/regenerate-embedding`,
+		{
+			method: "POST",
+		}
+	);
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		const error = new Error(`Failed to regenerate embedding: ${res.status}`);
+		error.status = res.status;
+		error.body = text;
+		throw error;
+	}
+	return res.json();
+}

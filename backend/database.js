@@ -707,6 +707,32 @@ function deleteResearchStatement(id) {
 	});
 }
 
+function updateResearchStatementEmbedding(id, embeddingVector) {
+	return new Promise((resolve, reject) => {
+		const sql = `UPDATE research_statements SET embedding = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+		let payload = null;
+		try {
+			if (Array.isArray(embeddingVector)) {
+				payload = JSON.stringify(embeddingVector);
+			} else if (embeddingVector == null) {
+				payload = null;
+			} else if (typeof embeddingVector === "string") {
+				payload = embeddingVector;
+			} else {
+				payload = JSON.stringify(embeddingVector);
+			}
+		} catch (_) {
+			payload = null;
+		}
+		db.run(sql, [payload, Number(id)], function (err) {
+			if (err) {
+				return reject(err);
+			}
+			resolve(this.changes);
+		});
+	});
+}
+
 module.exports = {
 	db,
 	initializeDatabase,
@@ -726,4 +752,5 @@ module.exports = {
 	createResearchStatement,
 	updateResearchStatement,
 	deleteResearchStatement,
+	updateResearchStatementEmbedding,
 };
