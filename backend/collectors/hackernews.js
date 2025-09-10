@@ -211,11 +211,15 @@ async function discoverViaFirebase({
 async function discoverTopStoriesViaFirebase({
 	maxItems,
 	perRequestDelayMs = 50,
+	keywords,
+	minPoints,
 } = {}) {
 	// Get current settings if not provided
-	if (!maxItems) {
+	if (!maxItems || !keywords || minPoints === undefined) {
 		const settings = getSettings();
-		maxItems = settings.maxItems;
+		if (!maxItems) maxItems = settings.maxItems;
+		if (!keywords) keywords = settings.keywords;
+		if (minPoints === undefined) minPoints = settings.minPoints;
 	}
 
 	const idsRes = await fetch(
@@ -237,6 +241,25 @@ async function discoverTopStoriesViaFirebase({
 			if (!itemRes.ok) continue;
 			const item = await itemRes.json();
 			if (!item || item.type !== "story") continue;
+
+			// Keyword match on title + URL
+			const hay = `${item.title || ""} ${item.url || ""}`.toLowerCase();
+			const match = Array.isArray(keywords)
+				? keywords.some((k) => hay.includes(String(k).toLowerCase()))
+				: false;
+			if (!match) {
+				if (perRequestDelayMs > 0) await sleep(perRequestDelayMs);
+				continue;
+			}
+
+			// Points threshold
+			if (Number.isFinite(minPoints) && Number(minPoints) > 0) {
+				if (Number(item.score) < Number(minPoints)) {
+					if (perRequestDelayMs > 0) await sleep(perRequestDelayMs);
+					continue;
+				}
+			}
+
 			collected.push({
 				id: Number(item.id),
 				hit: { title: item.title, url: item.url },
@@ -259,7 +282,11 @@ async function discoverTopAndRecentWithMinScore(options = {}) {
 
 	// Fetch top stories and recent keyword stories
 	const [top, recent] = await Promise.all([
-		discoverTopStoriesViaFirebase({ maxItems: mergedOptions.maxItems }),
+		discoverTopStoriesViaFirebase({
+			maxItems: mergedOptions.maxItems,
+			keywords: mergedOptions.keywords,
+			minPoints: mergedOptions.minPoints,
+		}),
 		(async () => {
 			try {
 				return await discoverStories(mergedOptions);
