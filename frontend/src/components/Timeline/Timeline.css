@@ -1,0 +1,134 @@
+.timeline-container {
+	position: relative;
+	width: 100%;
+	min-height: 100vh;
+	padding: 0 60px; /* Space for navigation on both sides */
+}
+
+.timeline-days {
+	display: flex;
+	height: auto;
+	gap: 32px;
+}
+
+.timeline-day-column {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	height: auto;
+	min-width: 0; /* Allow flex shrinking */
+}
+
+.timeline-day-header {
+	padding: 16px 8px 12px 8px;
+	border-bottom: 2px solid var(--color-border);
+	background-color: var(--color-bg);
+}
+
+.timeline-day-header h3 {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--color-text);
+	text-align: center;
+}
+
+.timeline-day-items {
+	flex: 0 0 auto;
+	overflow: visible;
+	padding: 8px;
+}
+
+.timeline {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* Navigation */
+.nav-back {
+	left: 16px;
+}
+
+.nav-forward {
+	right: 16px;
+}
+
+.nav-button {
+	position: fixed;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 40px;
+	height: 40px;
+	border: 1px solid var(--color-border);
+	border-radius: 8px;
+	background-color: var(--color-card);
+	color: var(--color-text);
+	font-size: 20px;
+	font-weight: 600;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s ease;
+	z-index: 20;
+}
+
+.nav-button:hover:not(.disabled) {
+	background-color: var(--color-elev-1);
+	border-color: var(--color-muted);
+	transform: scale(1.05);
+}
+
+.nav-button.disabled {
+	opacity: 0.3;
+	cursor: not-allowed;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+	.timeline-container {
+		padding: 0 50px;
+	}
+
+	.timeline-days {
+		gap: 20px;
+	}
+
+	.timeline-day-header {
+		padding: 12px 6px 8px 6px;
+	}
+
+	.timeline-day-header h3 {
+		font-size: 14px;
+	}
+
+	.timeline-day-items {
+		padding: 6px;
+	}
+
+	.nav-button {
+		width: 36px;
+		height: 36px;
+		font-size: 18px;
+	}
+
+	.nav-back {
+		left: 8px;
+	}
+
+	.nav-forward {
+		right: 8px;
+	}
+}
+
+/* Very small screens - show only 2 columns */
+@media (max-width: 480px) {
+	.timeline-days {
+		gap: 8px;
+	}
+
+	.timeline-day-header h3 {
+		font-size: 13px;
+	}
+}
