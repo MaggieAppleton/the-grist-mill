@@ -236,6 +236,7 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 ### Task 8.1: Implement Advanced Filtering & Ranking (Spec-Driven)
 - [ ] Implement the complete system as detailed in `/planning/features/filter_rank_system.md` (Updated September 10, 2025)
 - [ ] Apply the Prototyping Data Policy as needed (reset DB instead of migrations)
+- [ ] Ensure per-topic keywords and negative keywords are respected across discovery, scoring, and UI
 
 **Commit**: "Implement advanced filtering and ranking system (see feature spec)"
 
@@ -306,3 +307,4 @@ Each task must:
 
 - This application is single-user only. Favorites are stored directly on `content_items`.
 - Favoriting sets and persists a tier-4 rating for the active research statement; users can later change the rating via the relevance dot.
+- Multiple research topics are supported. Each topic has a title, research statement, and its own keyword filters. The dashboard can be filtered by `research_statement_id`.

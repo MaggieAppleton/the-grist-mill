@@ -33,7 +33,7 @@ Problems:
 
 1. **High Signal Content**: Surface only the most relevant items for user's research interests
 2. **Continuous Learning**: Improve ranking accuracy through user feedback
-3. **Multi-Category Support**: Support multiple research statements for different focus areas
+3. **Multi-Topic Support**: Support multiple research topics, each with its own title, keyword filters, and research statement; each topic has its own dashboard view
 4. **Frictionless Feedback**: Easy keyboard shortcuts for rapid relevance rating
 5. **Extensible Architecture**: Support future content sources beyond Hacker News
 6. **Favorites for Personal Curation**: Allow users to mark items as favorites (hearts) for quick recall, independent of system ranking
@@ -47,10 +47,11 @@ Problems:
 - Continue existing keyword-based discovery
 - Cheap elimination of obvious noise
 - Expand to post-processing keyword scoring
+- Apply keyword filtering per research topic: each topic defines its own keyword list (and optional negative keywords). Keyword scores are computed using the active topic’s lists.
 
 **Pass 2: Research Statement Matching**
 
-- Use embeddings to compare content against user research statements
+- Use embeddings to compare content against the active topic’s research statement
 - Generate 4-tier relevance scores: Very Relevant, Relevant, Weakly Relevant, Not Relevant
 - Store embedding similarities for future reference
 
@@ -63,7 +64,7 @@ Problems:
 ### Hybrid Scoring Formula
 
 ```
-Final Score = (0.3 × keyword_score) + (0.4 × embedding_similarity) + (0.3 × feedback_score)
+Final Score (per topic) = (0.3 × keyword_score_topic) + (0.4 × embedding_similarity_topic) + (0.3 × feedback_score_topic)
 ```
 
 Weights can be tuned based on performance and user preference.
@@ -76,9 +77,11 @@ Weights can be tuned based on performance and user preference.
 -- User research statements (supports multiple categories)
 CREATE TABLE research_statements (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name VARCHAR(100) NOT NULL,               -- "AI/LLM Research", "End-User Programming"
-  statement TEXT NOT NULL,                  -- Full research interest description
+  name VARCHAR(100) NOT NULL,               -- Topic title, e.g., "AI/LLM Research"
+  statement TEXT NOT NULL,                  -- Topic research statement/description
   embedding BLOB,                           -- Cached embedding of statement
+  keywords TEXT,                            -- JSON array of keyword strings (positive)
+  negative_keywords TEXT,                   -- JSON array of keyword strings to exclude (optional)
   is_active BOOLEAN DEFAULT TRUE,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -103,7 +106,7 @@ CREATE TABLE content_features (
   research_statement_id INTEGER NOT NULL,
   content_embedding BLOB,                   -- Cached embedding of title + content
   similarity_score REAL,                    -- Cosine similarity to research statement
-  keyword_score REAL,                       -- Keyword matching score
+  keyword_score REAL,                       -- Keyword matching score (computed per topic keywords)
   feedback_score REAL,                      -- Score based on similar item ratings
   final_score REAL,                         -- Combined weighted score
   relevance_tier INTEGER,                   -- 1-4 tier based on final_score
@@ -142,32 +145,33 @@ Notes:
 - We will not run the above `ALTER TABLE` statements at runtime. They describe the target schema. Actual behavior in `backend/database.js` will:
   - Create `content_items` with all new columns from the start: `primary_research_statement_id`, `best_relevance_tier`, `best_final_score`, `is_favorite`, `favorited_at`.
   - Create new tables `research_statements`, `user_ratings`, and `content_features`, plus their indexes, using `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`.
+  - `research_statements.keywords` and `negative_keywords` are stored as JSON arrays (TEXT). Validation occurs at the API layer.
   - Extend the existing schema guard to require the new `content_items` columns; if any required column is missing, drop and recreate `content_items` automatically on startup.
   - For simplicity during prototyping, if non-trivial shape changes are needed to new tables, delete `backend/grist_mill.db` and restart to reinitialize everything cleanly.
 
 ## Implementation Phases
 
-### Phase 8A: Research Statement Management
+### Phase 8A: Research Topic Management
 
-**Goal**: Allow users to create and manage multiple research statements
+**Goal**: Allow users to create and manage multiple research topics (title, keywords, negative keywords, research statement)
 
-#### Task 8A.1: Backend Research Statement API
+#### Task 8A.1: Backend Research Topic API
 
-- [ ] Create research statement CRUD endpoints
-- [ ] Add validation for statement text (min/max length)
-- [ ] Support for activating/deactivating statements
-- [ ] Default research statement creation
+- [ ] Create research statement CRUD endpoints (name/title, statement, keywords, negative_keywords, is_active)
+- [ ] Add validation for statement text (min/max length) and keyword arrays (array of non-empty strings)
+- [ ] Support for activating/deactivating topics
+- [ ] Default research topic creation
 
-**Commit**: "Add research statement management API"
+**Commit**: "Add research topic management API"
 
-#### Task 8A.2: Frontend Research Statement UI
+#### Task 8A.2: Frontend Research Topic UI
 
-- [ ] Settings page for managing research statements
-- [ ] Form for creating/editing statements
-- [ ] Toggle for active/inactive statements
+- [ ] Settings page for managing research topics
+- [ ] Form for creating/editing: title, research statement, keywords, negative keywords
+- [ ] Toggle for active/inactive topics
 - [ ] Validation and error handling
 
-**Commit**: "Add research statement management UI"
+**Commit**: "Add research topic management UI"
 
 #### Task 8A.3: Statement Embedding Generation
 
@@ -195,7 +199,7 @@ Notes:
 #### Task 8B.2: Similarity Calculation
 
 - [ ] Implement cosine similarity calculation
-- [ ] Compute similarity between content and active research statements
+- [ ] Compute similarity between content and active topics’ research statements
 - [ ] Store similarity scores in content_features table
 - [ ] Add threshold-based relevance tier assignment
 
@@ -283,7 +287,7 @@ Notes:
 
 #### Task 8D.3: Score-Based Content Sorting
 
-- [ ] Update API endpoints to sort by final_score
+- [ ] Update API endpoints to sort by final_score per topic (filter by `research_statement_id`)
 - [ ] Add filtering by relevance tier and by favorites
 - [ ] Update frontend to display relevance indicators and heart state
 - [ ] Test improved ranking accuracy

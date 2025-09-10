@@ -52,6 +52,14 @@ Note: The application is and will remain single-user only. Concepts like favorit
    - Relevance rating (4 tiers): Not Relevant, Weakly Relevant, Relevant, Very Relevant
    - Favorite (heart) toggle on items; when favorited, the system also persists a Very Relevant (tier 4) rating for the active research statement
 
+6. **Multi-Topic Dashboards**
+
+   - Support multiple research topics, each with:
+     - A title (name)
+     - A research statement (used for embeddings)
+     - Its own keyword filters (and optional negative keywords)
+   - The dashboard can be filtered by an active topic to show per-topic ranking, filtering, and favorites context
+
 ### Non-Functional Requirements
 
 - **Simplicity**: Minimal features to start, easy to extend
