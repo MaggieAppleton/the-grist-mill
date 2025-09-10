@@ -12,6 +12,12 @@ const {
 	searchItems,
 	insertContentItems,
 	getTodayAiUsage,
+	// research statement helpers
+	getAllResearchStatements,
+	getResearchStatementById,
+	createResearchStatement,
+	updateResearchStatement,
+	deleteResearchStatement,
 } = require("./database");
 const AIService = require("./services/ai");
 const { initializeScheduler } = require("./jobs/scheduler");
@@ -165,6 +171,155 @@ app.get("/api/usage", generalLimiter, async (req, res) => {
 	} catch (error) {
 		console.error("Error fetching AI usage:", error);
 		res.status(500).json({ error: "Failed to fetch AI usage" });
+	}
+});
+
+// Research Statements API
+app.get("/api/research-statements", generalLimiter, async (req, res) => {
+	try {
+		const rows = await getAllResearchStatements();
+		res.json(rows);
+	} catch (err) {
+		console.error("Error listing research statements:", err);
+		res.status(500).json({ error: "Failed to list research statements" });
+	}
+});
+
+app.get("/api/research-statements/:id", generalLimiter, async (req, res) => {
+	try {
+		const id = Number(req.params.id);
+		if (!Number.isFinite(id) || id <= 0) {
+			return res.status(400).json({ error: "Invalid id" });
+		}
+		const row = await getResearchStatementById(id);
+		if (!row) return res.status(404).json({ error: "Not found" });
+		res.json(row);
+	} catch (err) {
+		console.error("Error fetching research statement:", err);
+		res.status(500).json({ error: "Failed to fetch research statement" });
+	}
+});
+
+app.post("/api/research-statements", strictLimiter, async (req, res) => {
+	try {
+		const { name, statement, keywords, negative_keywords, is_active } =
+			req.body || {};
+		if (typeof name !== "string" || name.trim().length === 0) {
+			return res.status(400).json({ error: "name is required" });
+		}
+		if (typeof statement !== "string" || statement.trim().length < 10) {
+			return res
+				.status(400)
+				.json({ error: "statement must be at least 10 characters" });
+		}
+		const normalizeStringArray = (arr) => {
+			if (arr === undefined) return [];
+			if (!Array.isArray(arr)) return null;
+			const cleaned = arr
+				.map((v) => (typeof v === "string" ? v.trim() : ""))
+				.filter((v) => v.length > 0);
+			return cleaned;
+		};
+		const pos = normalizeStringArray(keywords);
+		const neg = normalizeStringArray(negative_keywords);
+		if (pos === null || neg === null) {
+			return res
+				.status(400)
+				.json({
+					error: "keywords and negative_keywords must be arrays of strings",
+				});
+		}
+		const id = await createResearchStatement({
+			name: name.trim(),
+			statement: statement.trim(),
+			keywords: JSON.stringify(pos || []),
+			negative_keywords: JSON.stringify(neg || []),
+			is_active: typeof is_active === "boolean" ? is_active : true,
+		});
+		const created = await getResearchStatementById(id);
+		res.status(201).json(created);
+	} catch (err) {
+		console.error("Error creating research statement:", err);
+		res.status(500).json({ error: "Failed to create research statement" });
+	}
+});
+
+app.put("/api/research-statements/:id", strictLimiter, async (req, res) => {
+	try {
+		const id = Number(req.params.id);
+		if (!Number.isFinite(id) || id <= 0) {
+			return res.status(400).json({ error: "Invalid id" });
+		}
+		const { name, statement, keywords, negative_keywords, is_active } =
+			req.body || {};
+		if (
+			name !== undefined &&
+			(typeof name !== "string" || name.trim().length === 0)
+		) {
+			return res
+				.status(400)
+				.json({ error: "name, if provided, must be non-empty" });
+		}
+		if (
+			statement !== undefined &&
+			(typeof statement !== "string" || statement.trim().length < 10)
+		) {
+			return res.status(400).json({
+				error: "statement, if provided, must be at least 10 characters",
+			});
+		}
+		const normalizeStringArray = (arr) => {
+			if (arr === undefined) return undefined;
+			if (!Array.isArray(arr)) return null;
+			const cleaned = arr
+				.map((v) => (typeof v === "string" ? v.trim() : ""))
+				.filter((v) => v.length > 0);
+			return cleaned;
+		};
+		const pos = normalizeStringArray(keywords);
+		const neg = normalizeStringArray(negative_keywords);
+		if (pos === null || neg === null) {
+			return res
+				.status(400)
+				.json({
+					error: "keywords and negative_keywords must be arrays of strings",
+				});
+		}
+		if (is_active !== undefined && typeof is_active !== "boolean") {
+			return res
+				.status(400)
+				.json({ error: "is_active, if provided, must be boolean" });
+		}
+		const changes = await updateResearchStatement(id, {
+			name,
+			statement,
+			keywords: pos !== undefined ? JSON.stringify(pos) : undefined,
+			negative_keywords: neg !== undefined ? JSON.stringify(neg) : undefined,
+			is_active,
+		});
+		if (changes === 0) {
+			return res.status(404).json({ error: "Not found or no changes" });
+		}
+		const updated = await getResearchStatementById(id);
+		res.json(updated);
+	} catch (err) {
+		console.error("Error updating research statement:", err);
+		res.status(500).json({ error: "Failed to update research statement" });
+	}
+});
+
+app.delete("/api/research-statements/:id", strictLimiter, async (req, res) => {
+	try {
+		const id = Number(req.params.id);
+		if (!Number.isFinite(id) || id <= 0) {
+			return res.status(400).json({ error: "Invalid id" });
+		}
+		const changes = await deleteResearchStatement(id);
+		if (changes === 0) return res.status(404).json({ error: "Not found" });
+		res.json({ success: true });
+	} catch (err) {
+		console.error("Error deleting research statement:", err);
+		res.status(500).json({ error: "Failed to delete research statement" });
 	}
 });
 

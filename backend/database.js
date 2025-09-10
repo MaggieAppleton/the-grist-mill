@@ -49,6 +49,20 @@ function initializeDatabase() {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_usage_date ON ai_usage(date)
     `;
 
+		const createResearchStatementsTable = `
+      CREATE TABLE IF NOT EXISTS research_statements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name VARCHAR(100) NOT NULL,
+        statement TEXT NOT NULL,
+        embedding BLOB,
+        keywords TEXT,
+        negative_keywords TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
 		db.serialize(() => {
 			function proceedAfterContentItems() {
 				db.run(createAIUsageTable, (err) => {
@@ -67,7 +81,131 @@ function initializeDatabase() {
 							return reject(idxErr);
 						}
 						console.log("AI usage date index created or already exists.");
-						resolve();
+
+						// Create research_statements table and seed default if empty
+						db.run(createResearchStatementsTable, (rsErr) => {
+							if (rsErr) {
+								console.error(
+									"Error creating research_statements table:",
+									rsErr.message
+								);
+								return reject(rsErr);
+							}
+							console.log(
+								"research_statements table created or already exists."
+							);
+
+							// Check schema for keywords columns and seed default topic
+							db.all(
+								"PRAGMA table_info(research_statements)",
+								[],
+								(infoErr, cols) => {
+									if (infoErr) {
+										console.error(
+											"Error reading research_statements schema:",
+											infoErr.message
+										);
+										return reject(infoErr);
+									}
+									const existing = new Set((cols || []).map((r) => r.name));
+									const required = [
+										"id",
+										"name",
+										"statement",
+										"embedding",
+										"keywords",
+										"negative_keywords",
+										"is_active",
+										"created_at",
+										"updated_at",
+									];
+									const missing = required.filter((c) => !existing.has(c));
+
+									const seed = () => {
+										db.get(
+											"SELECT COUNT(*) as count FROM research_statements",
+											[],
+											(countErr, row) => {
+												if (countErr) {
+													console.error(
+														"Error counting research_statements:",
+														countErr.message
+													);
+													return reject(countErr);
+												}
+												if (!row || Number(row.count) === 0) {
+													const insertDefault = `
+													INSERT INTO research_statements (name, statement, keywords, negative_keywords, is_active)
+													VALUES (?, ?, ?, ?, 1)
+												`;
+													const defaultName = "AI/LLM Research";
+													const defaultStatement =
+														"Focus on AI/LLM, developer tools, code generation, RAG/embeddings, agent systems, and practical applications improving software development workflows.";
+													db.run(
+														insertDefault,
+														[
+															defaultName,
+															defaultStatement,
+															JSON.stringify([]),
+															JSON.stringify([]),
+														],
+														(insErr) => {
+															if (insErr) {
+																console.error(
+																	"Error inserting default research statement:",
+																	insErr.message
+																);
+																return reject(insErr);
+															}
+															console.log(
+																"Inserted default research statement."
+															);
+															return resolve();
+														}
+													);
+												} else {
+													return resolve();
+												}
+											}
+										);
+									};
+
+									if (missing.length === 0) {
+										return seed();
+									}
+									console.warn(
+										`Resetting 'research_statements' table to ensure required columns: ${missing.join(
+											", "
+										)}`
+									);
+									db.run(
+										"DROP TABLE IF EXISTS research_statements",
+										(dropErr) => {
+											if (dropErr) {
+												console.error(
+													"Error dropping research_statements:",
+													dropErr.message
+												);
+												return reject(dropErr);
+											}
+											db.run(createResearchStatementsTable, (reErr) => {
+												if (reErr) {
+													console.error(
+														"Error recreating research_statements table:",
+														reErr.message
+													);
+													return reject(reErr);
+												}
+												console.log(
+													"research_statements table reset with correct schema."
+												);
+												seed();
+											});
+										}
+									);
+								}
+							);
+						});
 					});
 				});
 			}
@@ -450,6 +588,125 @@ function incrementAiUsage({
 	});
 }
 
+// Research statements helpers
+function getAllResearchStatements() {
+	return new Promise((resolve, reject) => {
+		const query = `
+			SELECT id, name, statement, embedding, keywords, negative_keywords, is_active, created_at, updated_at
+			FROM research_statements
+			ORDER BY created_at DESC
+		`;
+		db.all(query, [], (err, rows) => {
+			if (err) {
+				return reject(err);
+			}
+			resolve(rows || []);
+		});
+	});
+}
+
+function getResearchStatementById(id) {
+	return new Promise((resolve, reject) => {
+		const query = `
+			SELECT id, name, statement, embedding, keywords, negative_keywords, is_active, created_at, updated_at
+			FROM research_statements
+			WHERE id = ?
+		`;
+		db.get(query, [Number(id)], (err, row) => {
+			if (err) {
+				return reject(err);
+			}
+			resolve(row || null);
+		});
+	});
+}
+
+function createResearchStatement({
+	name,
+	statement,
+	keywords,
+	negative_keywords,
+	is_active = true,
+}) {
+	return new Promise((resolve, reject) => {
+		const insert = `
+			INSERT INTO research_statements (name, statement, keywords, negative_keywords, is_active)
+			VALUES (?, ?, ?, ?, ?)
+		`;
+		db.run(
+			insert,
+			[
+				String(name || "").trim(),
+				String(statement || "").trim(),
+				typeof keywords === "string" ? keywords : JSON.stringify([]),
+				typeof negative_keywords === "string"
+					? negative_keywords
+					: JSON.stringify([]),
+				is_active ? 1 : 0,
+			],
+			function (err) {
+				if (err) {
+					return reject(err);
+				}
+				resolve(this.lastID);
+			}
+		);
+	});
+}
+
+function updateResearchStatement(
+	id,
+	{ name, statement, keywords, negative_keywords, is_active }
+) {
+	return new Promise((resolve, reject) => {
+		const fields = [];
+		const params = [];
+		if (typeof name === "string") {
+			fields.push("name = ?");
+			params.push(name.trim());
+		}
+		if (typeof statement === "string") {
+			fields.push("statement = ?");
+			params.push(statement.trim());
+		}
+		if (typeof keywords === "string") {
+			fields.push("keywords = ?");
+			params.push(keywords);
+		}
+		if (typeof negative_keywords === "string") {
+			fields.push("negative_keywords = ?");
+			params.push(negative_keywords);
+		}
+		if (typeof is_active === "boolean") {
+			fields.push("is_active = ?");
+			params.push(is_active ? 1 : 0);
+		}
+		fields.push("updated_at = CURRENT_TIMESTAMP");
+		const sql = `UPDATE research_statements SET ${fields.join(
+			", "
+		)} WHERE id = ?`;
+		params.push(Number(id));
+		db.run(sql, params, function (err) {
+			if (err) {
+				return reject(err);
+			}
+			resolve(this.changes);
+		});
+	});
+}
+
+function deleteResearchStatement(id) {
+	return new Promise((resolve, reject) => {
+		const sql = `DELETE FROM research_statements WHERE id = ?`;
+		db.run(sql, [Number(id)], function (err) {
+			if (err) {
+				return reject(err);
+			}
+			resolve(this.changes);
+		});
+	});
+}
+
 module.exports = {
 	db,
 	initializeDatabase,
@@ -463,4 +720,10 @@ module.exports = {
 	getAiUsageForDate,
 	getTodayAiUsage,
 	incrementAiUsage,
+	// research statements
+	getAllResearchStatements,
+	getResearchStatementById,
+	createResearchStatement,
+	updateResearchStatement,
+	deleteResearchStatement,
 };
