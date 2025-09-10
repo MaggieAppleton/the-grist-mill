@@ -6,6 +6,8 @@ Updated: August 26, 2025 8:33AM
 
 A personal web-based dashboard that aggregates and summarizes content from various sources using AI. Initially focused on Hacker News with AI-driven filtering, designed to be extensible for future content sources like Discord, Bluesky, Reddit, etc. Built for single-user local/personal hosting.
 
+Note: The application is and will remain single-user only. Concepts like favorites (hearts) are stored directly on content items and do not require multi-user modeling.
+
 ## User Story
 
 "As someone who wants to stay informed across multiple platforms without being overwhelmed, I want a single dashboard that shows AI-summarized content from my important sources, so I can quickly scan what's relevant without opening multiple apps."
@@ -40,9 +42,15 @@ A personal web-based dashboard that aggregates and summarizes content from vario
    - No read/unread states, no archiving (infinite scroll)
 
 4. **Data Persistence**
+
    - SQLite database for personal use
    - Store all content items indefinitely
    - Simple logging with timestamps for debugging
+
+5. **User Feedback and Favorites**
+
+   - Relevance rating (4 tiers): Not Relevant, Weakly Relevant, Relevant, Very Relevant
+   - Favorite (heart) toggle on items; when favorited, the system also persists a Very Relevant (tier 4) rating for the active research statement
 
 ### Non-Functional Requirements
 
@@ -82,63 +90,16 @@ A personal web-based dashboard that aggregates and summarizes content from vario
 ```
 /frontend
 ├── src/
-│   ├── components/    # React components
-│   ├── services/      # API client
-│   ├── hooks/         # Custom React hooks
-│   └── styles/        # CSS/styling
-└── public/           # Static assets
+├── components/    # React components
+├── services/      # API client
+├── hooks/         # Custom React hooks
+└── styles/        # CSS/styling
+└── public/        # Static assets
 ```
 
 ## Database Schema
 
-### `content_items` table
-
-```sql
-CREATE TABLE content_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  source VARCHAR(50) NOT NULL,           -- 'discord', 'bluesky', 'hackernews'
-  source_id VARCHAR(255),                -- Original ID from source platform
-  title VARCHAR(500),                    -- Generated or extracted title
-  summary TEXT NOT NULL,                 -- AI-generated summary (markdown with embedded citations)
-  raw_content TEXT,                      -- Original content (JSON)
-  url VARCHAR(500),                      -- Single URL for single-source items (HN posts, etc)
-  metadata JSON,                         -- Source-specific data
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_source_created ON content_items(source, created_at);
-CREATE INDEX idx_created_at ON content_items(created_at DESC);
-```
-
-### `collector_runs` table (for tracking job execution)
-
-```sql
-CREATE TABLE collector_runs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  collector_name VARCHAR(50) NOT NULL,
-  status VARCHAR(20) NOT NULL,          -- 'success', 'failed', 'running'
-  items_collected INTEGER DEFAULT 0,
-  error_message TEXT,
-  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  completed_at DATETIME
-);
-```
-
-### `ai_usage` table (for cost tracking)
-
-```sql
-CREATE TABLE ai_usage (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  date DATE NOT NULL,
-  tokens_used INTEGER DEFAULT 0,
-  estimated_cost DECIMAL(10,4) DEFAULT 0,
-  requests_count INTEGER DEFAULT 0,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE UNIQUE INDEX idx_ai_usage_date ON ai_usage(date);
-```
+- See `planning/features/filter_rank_system.md` for advanced filtering/favorites schema; app is single-user and stores favorites on `content_items`.
 
 ## API Specification
 

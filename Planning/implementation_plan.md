@@ -1,10 +1,18 @@
 # The Grist Mill - Implementation Plan
 
-Updated: September 4, 2025 8:14PM
+Updated: September 10, 2025
 
 ## Overview
 
 This plan breaks down the implementation into focused phases, prioritizing getting data on the page quickly before adding refinements. Each phase should result in a working system.
+
+## Prototyping Data Policy (No Migrations)
+
+- During prototyping, we will not write database migrations. When schema changes are needed, we will reset the SQLite database to align with the latest schema.
+- Operational steps: stop backend, delete `backend/grist_mill.db`, restart backend to reinitialize schema, then re-run collectors to repopulate data.
+- Current code already auto-resets `content_items` if required columns are missing (see `backend/database.js`). We will apply the same approach for new tables/columns added by Phase 8.
+
+---
 
 ## Phase 1: Basic Backend Foundation
 
@@ -180,8 +188,7 @@ This plan breaks down the implementation into focused phases, prioritizing getti
 - [x] Add minimal delays/backoff between external API calls (Algolia/Firebase)
 - [ ] Verify no rate limit errors during daily runs
 
-**Commit**: "Add external API ra
-te limiting"
+**Commit**: "Add external API rate limiting"
 
 ### Task 6.3: Frontend Polish
 
@@ -226,14 +233,11 @@ te limiting"
 
 **Goal**: Replace binary highlight system with intelligent multi-pass ranking that learns from user feedback
 
-### Task 8.1: Implement Advanced Filtering & Ranking
-- [ ] Implement the complete filtering and ranking system as detailed in `/planning/features/filter_rank_system.md`
-- Includes: research statement management, content embeddings, user feedback with keyboard shortcuts, hybrid scoring algorithm, and multi-statement dashboard support
-- See feature spec for detailed breakdown of 15+ sub-tasks across 5 implementation phases
+### Task 8.1: Implement Advanced Filtering & Ranking (Spec-Driven)
+- [ ] Implement the complete system as detailed in `/planning/features/filter_rank_system.md` (Updated September 10, 2025)
+- [ ] Apply the Prototyping Data Policy as needed (reset DB instead of migrations)
 
-**Commit**: "Implement advanced filtering and ranking system"
-
-**Phase Goal**: User can manage multiple research interests, rate content relevance with keyboard shortcuts, and see dramatically improved content ranking based on their feedback.
+**Commit**: "Implement advanced filtering and ranking system (see feature spec)"
 
 ---
 
@@ -295,3 +299,10 @@ Each task must:
 - Hacker News collection now merges Top stories with recent (last 24h) keyword-matched stories; hydrated via Firebase and filtered by a score threshold (`minPoints`, default 20).
 - Configuration: `backend/config/user-settings.json` supports `minPoints`; can be overridden via `HN_MIN_POINTS`. Merged results are truncated to `maxItems`.
 - Job and ingest now call `discoverTopAndRecentWithMinScore({ maxItems, minPoints })`. Top stories are not keyword-filtered; only the score threshold applies.
+
+---
+
+## Notes
+
+- This application is single-user only. Favorites are stored directly on `content_items`.
+- Favoriting sets and persists a tier-4 rating for the active research statement; users can later change the rating via the relevance dot.

@@ -1,20 +1,29 @@
 # Advanced Filtering and Ranking System
 
-Updated: September 5, 2025
+Updated: September 10, 2025
 
 ## Overview
 
 This document outlines the implementation of an advanced multi-pass filtering and ranking system for The Grist Mill. The system will replace the current simple binary highlight/non-highlight approach with a sophisticated weighted scoring system that learns from user feedback and compares content against user-defined research statements.
 
+## Prototyping Data Policy (No Migrations)
+
+- This project is in prototyping. Data persistence is not required across schema changes.
+- We will not write database migrations during this phase. When schema changes are needed, we will reset the SQLite database (drop and recreate tables or delete the DB file) to match the latest schema.
+- Current backend (`backend/database.js`) already drops and recreates `content_items` if required columns are missing. We will extend this approach as new tables/columns are introduced for this feature (e.g., `research_statements`, `user_ratings`, `content_features`, and favorites columns).
+- Operational guidance: When applying schema updates from this spec, stop the server, delete `backend/grist_mill.db`, restart the backend to reinitialize with the new schema, and re-run collectors.
+
 ## Current System Limitations
 
 The existing system uses:
+
 1. Keyword-based discovery via Algolia HN Search
 2. Single-pass AI classification with binary highlight flag
 3. No user feedback mechanism
 4. No personalization or learning
 
 Problems:
+
 - Items ranked as "highlights" often aren't truly relevant to research goals
 - No way to improve ranking accuracy over time
 - No support for multiple research interests
@@ -27,22 +36,26 @@ Problems:
 3. **Multi-Category Support**: Support multiple research statements for different focus areas
 4. **Frictionless Feedback**: Easy keyboard shortcuts for rapid relevance rating
 5. **Extensible Architecture**: Support future content sources beyond Hacker News
+6. **Favorites for Personal Curation**: Allow users to mark items as favorites (hearts) for quick recall, independent of system ranking
 
 ## Architecture Overview
 
 ### Multi-Pass Filtering Pipeline
 
 **Pass 1: Keyword Filtering (Pre-AI)**
+
 - Continue existing keyword-based discovery
 - Cheap elimination of obvious noise
 - Expand to post-processing keyword scoring
 
 **Pass 2: Research Statement Matching**
+
 - Use embeddings to compare content against user research statements
 - Generate 4-tier relevance scores: Very Relevant, Relevant, Weakly Relevant, Not Relevant
 - Store embedding similarities for future reference
 
 **Pass 3: Feedback-Informed Ranking**
+
 - Apply learned patterns from historical user ratings
 - Boost/penalize based on similarity to previously rated content
 - Combine with embedding scores for final ranking
@@ -112,7 +125,25 @@ CREATE INDEX idx_user_ratings_lookup ON user_ratings(content_item_id, research_s
 ALTER TABLE content_items ADD COLUMN primary_research_statement_id INTEGER;
 ALTER TABLE content_items ADD COLUMN best_relevance_tier INTEGER DEFAULT 1;
 ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
+
+-- Favorites (heart/bookmark) support for single-user app
+ALTER TABLE content_items ADD COLUMN is_favorite BOOLEAN DEFAULT 0; -- 0=false, 1=true
+ALTER TABLE content_items ADD COLUMN favorited_at DATETIME;         -- when user hearted
 ```
+
+Notes:
+
+- This application is single-user only. Favorites are stored directly on `content_items`; there is no multi-user model.
+- When `is_favorite` is set to true, the system also persists a relevance rating of 4 (Very Relevant) for the active research statement and updates any cached best-tier fields accordingly.
+- During prototyping, when adding these columns, we will reset the database (no migration). See Prototyping Data Policy above.
+
+### Backend Initialization Changes (database.js)
+
+- We will not run the above `ALTER TABLE` statements at runtime. They describe the target schema. Actual behavior in `backend/database.js` will:
+  - Create `content_items` with all new columns from the start: `primary_research_statement_id`, `best_relevance_tier`, `best_final_score`, `is_favorite`, `favorited_at`.
+  - Create new tables `research_statements`, `user_ratings`, and `content_features`, plus their indexes, using `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`.
+  - Extend the existing schema guard to require the new `content_items` columns; if any required column is missing, drop and recreate `content_items` automatically on startup.
+  - For simplicity during prototyping, if non-trivial shape changes are needed to new tables, delete `backend/grist_mill.db` and restart to reinitialize everything cleanly.
 
 ## Implementation Phases
 
@@ -121,6 +152,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Goal**: Allow users to create and manage multiple research statements
 
 #### Task 8A.1: Backend Research Statement API
+
 - [ ] Create research statement CRUD endpoints
 - [ ] Add validation for statement text (min/max length)
 - [ ] Support for activating/deactivating statements
@@ -129,6 +161,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Commit**: "Add research statement management API"
 
 #### Task 8A.2: Frontend Research Statement UI
+
 - [ ] Settings page for managing research statements
 - [ ] Form for creating/editing statements
 - [ ] Toggle for active/inactive statements
@@ -137,6 +170,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Commit**: "Add research statement management UI"
 
 #### Task 8A.3: Statement Embedding Generation
+
 - [ ] Generate embeddings for research statements on create/update
 - [ ] Cache embeddings in database
 - [ ] Add re-generation endpoint for testing
@@ -150,6 +184,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Goal**: Generate embeddings for content and compute similarity scores
 
 #### Task 8B.1: Content Embedding Service
+
 - [ ] Extract content text from items (title + first 500 chars of content/summary)
 - [ ] Generate embeddings using OpenAI text-embedding-3-small
 - [ ] Store embeddings in content_features table
@@ -158,6 +193,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Commit**: "Add content embedding generation"
 
 #### Task 8B.2: Similarity Calculation
+
 - [ ] Implement cosine similarity calculation
 - [ ] Compute similarity between content and active research statements
 - [ ] Store similarity scores in content_features table
@@ -166,6 +202,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Commit**: "Add content-research statement similarity scoring"
 
 #### Task 8B.3: Integration with Content Collection
+
 - [ ] Generate embeddings and similarity scores during HN collection
 - [ ] Update existing content items with embeddings
 - [ ] Test with real HN data
@@ -176,9 +213,10 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 
 ### Phase 8C: User Feedback System
 
-**Goal**: Capture and store user relevance ratings
+**Goal**: Capture and store user relevance ratings and favorites
 
 #### Task 8C.1: Feedback API Endpoints
+
 - [ ] POST /api/feedback/rate endpoint for rating items
 - [ ] GET /api/feedback/stats for user's rating history
 - [ ] Support for multiple research statements per item
@@ -186,15 +224,33 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 
 **Commit**: "Add user feedback API endpoints"
 
-#### Task 8C.2: Frontend Rating Interface
-- [ ] Rating buttons/controls on each content item
-- [ ] Keyboard shortcuts (1-4 keys for rating tiers)
-- [ ] Visual feedback for rated items
-- [ ] Bulk rating capabilities
+#### Task 8C.1b: Favorites API Endpoints
 
-**Commit**: "Add user rating interface with keyboard shortcuts"
+- [ ] POST /api/favorites/toggle to heart/unheart an item
+- [ ] Toggling favorite to true must also persist rating=4 for the active research statement
+- [ ] GET /api/favorites?only=true to list favorited items (optional convenience)
+
+**Commit**: "Add favorites (heart) API endpoints"
+
+#### Task 8C.2: Frontend Rating Interface
+
+- [ ] Relevance dot control on each content item
+- [ ] Dropdown menu with 4 options (Not, Weakly, Relevant, Very Relevant)
+- [ ] Keyboard shortcuts (1-4 keys) for rating tiers
+- [ ] Visual feedback for rated items
+
+**Commit**: "Add user rating interface with relevance dot and keyboard shortcuts"
+
+#### Task 8C.2b: Favorites UI
+
+- [ ] Heart icon next to relevance dot; toggles favorite
+- [ ] Favoriting sets the rating to Very Relevant (tier 4) and persists it
+- [ ] Filter switch on dashboard to show only favorites
+
+**Commit**: "Add favorites UI and dashboard filter"
 
 #### Task 8C.3: Rating History and Analytics
+
 - [ ] Show user's rating history in settings
 - [ ] Basic analytics on rating patterns
 - [ ] Export ratings data functionality
@@ -208,6 +264,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Goal**: Use user feedback to improve future rankings
 
 #### Task 8D.1: Similarity-Based Feedback Scoring
+
 - [ ] Find similar content items (by embeddings) that user has rated
 - [ ] Weight feedback based on similarity distance
 - [ ] Compute feedback score for unrated items
@@ -216,6 +273,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Commit**: "Add feedback-based scoring using content similarity"
 
 #### Task 8D.2: Hybrid Score Calculation
+
 - [ ] Combine keyword, similarity, and feedback scores
 - [ ] Implement weighted scoring formula
 - [ ] Update relevance tiers based on combined scores
@@ -224,9 +282,10 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Commit**: "Implement hybrid scoring algorithm"
 
 #### Task 8D.3: Score-Based Content Sorting
+
 - [ ] Update API endpoints to sort by final_score
-- [ ] Add filtering by relevance tier
-- [ ] Update frontend to display relevance indicators
+- [ ] Add filtering by relevance tier and by favorites
+- [ ] Update frontend to display relevance indicators and heart state
 - [ ] Test improved ranking accuracy
 
 **Commit**: "Add score-based content ranking and filtering"
@@ -238,6 +297,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Goal**: Support filtering and ranking by different research statements
 
 #### Task 8E.1: Statement Selection Interface
+
 - [ ] Dropdown/tabs for selecting active research statement
 - [ ] Show content filtered by selected statement
 - [ ] Update URLs to include statement parameter
@@ -246,6 +306,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Commit**: "Add multi-statement dashboard filtering"
 
 #### Task 8E.2: Statement-Specific Analytics
+
 - [ ] Show ranking performance per research statement
 - [ ] Content distribution charts by relevance tier
 - [ ] Feedback coverage statistics
@@ -254,6 +315,7 @@ ALTER TABLE content_items ADD COLUMN best_final_score REAL DEFAULT 0.0;
 **Commit**: "Add per-statement analytics and reporting"
 
 #### Task 8E.3: Batch Re-ranking
+
 - [ ] Re-calculate scores when research statements change
 - [ ] Background job for re-ranking existing content
 - [ ] Progress tracking for large re-ranking operations
@@ -280,6 +342,7 @@ POST /api/research-statements/:id/regenerate-embedding
 ```
 GET /api/items?research_statement_id=123&min_tier=3&limit=50
 GET /api/items?research_statement_id=123&sort=score_desc
+GET /api/items?favorites_only=true                          -- returns only favorites
 ```
 
 ### Feedback Endpoints
@@ -295,19 +358,37 @@ POST /api/feedback/rate
 GET /api/feedback/stats?research_statement_id=456
 ```
 
+### Favorites Endpoints
+
+```
+POST /api/favorites/toggle
+{
+  "content_item_id": 123,
+  "is_favorite": true
+}
+-- If is_favorite becomes true, also persist rating=4 for the active research statement
+```
+
 ## User Interface Design
 
 ### Content Item Display
 
 Each content item will show:
-- **Relevance Badge**: Color-coded tier indicator (Very Relevant = Green, etc.)
-- **Score Display**: Numerical score (optional, for power users)
-- **Rating Controls**: 1-4 number buttons or star-style rating
-- **Research Statement**: Which statement this ranking is for
+
+- **Relevance Dot**: Color-coded dot to the left of the source badge. Clicking opens a dropdown to choose among 4 tiers. Colors: Not Relevant = Gray; Weakly Relevant = Light Green; Relevant = Medium Green; Very Relevant = Dark Green (using saturation/opacity to distinguish tiers).
+- **Heart (Favorite) Icon**: Next to the relevance dot. Clicking toggles favorite state (filled heart when active) and sets rating to Very Relevant (tier 4).
+- **Research Statement Icon**: Icon in the bottom right. When hovered, shows which research statement this ranking pertains to. Use the relevant research statement name.
+
+### Relevance Dropdown Menu
+
+- Opens when clicking the relevance dot or pressing a shortcut to open rating menu
+- Shows four options with leading colored dots and labels: Not Relevant (1), Weakly Relevant (2), Relevant (3), Very Relevant (4)
+- Selecting an option posts rating immediately and updates UI state
 
 ### Keyboard Shortcuts
 
 - **1-4 Keys**: Rate current item (1=Not Relevant, 4=Very Relevant)
+- **F Key**: Toggle favorite (heart) for current item (sets rating to 4 when favorited)
 - **J/K Keys**: Navigate up/down timeline
 - **R Key**: Refresh/reload content
 - **S Key**: Open research statement selector
@@ -323,11 +404,13 @@ Each content item will show:
 ## Cost Optimization Strategy
 
 ### Initial Phase (Higher Cost for Learning)
+
 - **Budget**: $1/day for embeddings + ranking
 - **Priority**: Get sufficient training data through user feedback
 - **Approach**: Generate embeddings for all content, compute similarities frequently
 
 ### Optimization Phase (Cost Reduction)
+
 - **Caching**: Store embeddings and only regenerate when content/statements change
 - **Batching**: Bulk embedding generation to reduce API calls
 - **Selective Processing**: Only rank content above minimum keyword threshold
@@ -336,33 +419,21 @@ Each content item will show:
 ## Success Metrics
 
 ### Ranking Quality
+
 - **User Satisfaction**: % of "Very Relevant" items rated as actually relevant
 - **Discovery Rate**: % of relevant content surfaced vs missed
 - **Feedback Volume**: User engagement with rating system
+- **Favorites Usage**: # of favorited items and revisit rate
 
 ### System Performance
+
 - **Response Time**: Dashboard load time under 2 seconds
 - **Cost Efficiency**: Daily embedding/ranking costs under budget
 - **Feedback Coverage**: % of content items with user ratings
 
 ### User Experience
+
 - **Daily Usage**: Consistent engagement with dashboard
 - **Rating Efficiency**: Average time to rate items (target: <5 seconds)
 - **Accuracy Improvement**: Ranking quality improvement over time
-
-## Future Enhancements
-
-### Advanced ML Features
-- **Active Learning**: Suggest items for user to rate that would improve model most
-- **Ensemble Methods**: Combine multiple ranking algorithms
-- **Temporal Patterns**: Learn user's changing interests over time
-
-### Multi-Modal Content
-- **Image Analysis**: Process images in HN posts for additional ranking signals
-- **Link Content**: Analyze linked article content for better relevance scoring
-- **Comment Analysis**: Factor in HN comment quality and relevance
-
-### Social Features
-- **Collaborative Filtering**: Learn from similar users' preferences (privacy-preserving)
-- **Expert Recommendations**: Weight ratings from domain experts higher
-- **Community Research Statements**: Share and adapt research statements across users
+- **Favorite Recall**: Time to locate favorited items (target: instant via filter)
