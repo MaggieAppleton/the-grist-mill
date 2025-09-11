@@ -1,6 +1,6 @@
 # The Grist Mill - Product Specification
 
-Updated: September 11, 2025  5:00PM BST
+Updated: September 11, 2025 5:00PM BST
 
 ## Overview
 
@@ -102,12 +102,29 @@ Note: The application is and will remain single-user only. Concepts like favorit
 
 ```
 /frontend
+├── public/                    # Static assets
 ├── src/
-├── components/    # React components
-├── services/      # API client
-├── hooks/         # Custom React hooks
-└── styles/        # CSS/styling
-└── public/        # Static assets
+│   ├── main.jsx               # App entry
+│   ├── App.jsx                # Root component
+│   ├── index.css              # Global styles
+│   ├── App.css                # App-level styles
+│   ├── assets/                # Static assets used in the app
+│   ├── components/            # React components
+│   │   ├── HeaderBar/
+│   │   ├── Timeline/
+│   │   └── modals/
+│   ├── hooks/                 # Custom React hooks
+│   │   ├── useFeed.js
+│   │   ├── useResearchStatements.js
+│   │   ├── useSearch.js
+│   │   └── useSettings.js
+│   ├── services/              # API client
+│   │   └── api.js
+│   └── utils/                 # Helpers (dates, markdown, etc.)
+│       ├── dates.js
+│       ├── items.js
+│       └── markdown.js
+└── dist/                      # Build output (Vite)
 ```
 
 ## Database Schema
@@ -118,13 +135,37 @@ Note: The application is and will remain single-user only. Concepts like favorit
 
 ### Endpoints
 
-- `GET /api/items` - Retrieve content items
-  - Query params: `limit` (default 50), `offset`, `source`
-  - Response: Array of content items with metadata
-- `GET /api/health` - Health check endpoint
-- `GET /api/usage` - Get daily AI usage and cost tracking
-- `POST /api/collectors/trigger/:name` - Manual collector trigger (dev only)
-- `POST /api/collectors/hackernews` - Trigger Hacker News collection (MVP)
+- `GET /api/health` - Health check
+- `GET /api/items` - List content items
+  - Query params: `source`, `limit`, `offset`
+- `GET /api/search` - Full-text search across items
+  - Query params: `q` (required), `source`, `limit` (default 50), `offset` (default 0)
+- `GET /api/usage` - Today's AI usage and budget summary
+
+- Research Statements
+  - `GET /api/research-statements` - List all research statements
+  - `GET /api/research-statements/:id` - Get one
+  - `POST /api/research-statements` - Create (body: `name`, `statement`, `keywords[]`, `negative_keywords[]`, `is_active`)
+  - `PUT /api/research-statements/:id` - Update
+  - `DELETE /api/research-statements/:id` - Delete
+  - `POST /api/research-statements/:id/regenerate-embedding` - Rebuild embedding
+
+- Feedback
+  - `POST /api/feedback/rate` - Rate relevance (body: `content_item_id`, `research_statement_id`, `rating` 1-4)
+  - `GET /api/feedback/stats` - Aggregate ratings (query: `research_statement_id` optional)
+
+- Settings
+  - `GET /api/settings` - Get user settings
+  - `PUT /api/settings` - Update user settings
+
+- Collectors
+  - `POST /api/collectors/hackernews` - Trigger Hacker News collection (runs in background)
+
+- AI
+  - `GET /api/ai/test` - Test AI service connectivity
+
+- Development utilities
+  - `POST /api/test` - Simple test endpoint
 
 ### Content Item Response Format
 
