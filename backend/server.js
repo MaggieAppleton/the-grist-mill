@@ -565,6 +565,8 @@ app.get("/api/ai/test", strictLimiter, async (req, res) => {
 	}
 });
 
+// (Removed temporary /api/_debug/routes dev endpoint)
+
 // Initialize database and start server
 async function startServer() {
 	try {

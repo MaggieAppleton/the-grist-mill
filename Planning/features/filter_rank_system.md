@@ -179,11 +179,11 @@ Follow-up:
 
 #### Task 8A.3: Statement Embedding Generation
 
-- [ ] Generate embeddings for research statements on create/update
-- [ ] Cache embeddings in database
-- [ ] Add re-generation endpoint for testing
+- [x] Generate embeddings for research statements on create/update
+- [x] Cache embeddings in database
+- [x] Add re-generation endpoint for testing
 
-**Commit**: "Add embedding generation for research statements"
+**Commit**: "Add embedding generation for research statements" ✅ COMPLETED (September 11, 2025)
 
 ---
 
