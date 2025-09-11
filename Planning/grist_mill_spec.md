@@ -1,6 +1,6 @@
 # The Grist Mill - Product Specification
 
-Updated: August 26, 2025 8:33AM
+Updated: September 11, 2025  5:00PM BST
 
 ## Overview
 
@@ -82,15 +82,20 @@ Note: The application is and will remain single-user only. Concepts like favorit
 
 ```
 /backend
-├── src/
-│   ├── api/           # Express routes
-│   ├── collectors/    # Source-specific collectors
-│   ├── services/      # AI service, database service
-│   ├── jobs/          # Background job scheduler
-│   ├── models/        # Database models/schemas
-│   └── utils/         # Shared utilities
-├── database/          # SQLite file location
-└── config/           # Configuration files
+├── collectors/            # Source-specific collectors
+├── jobs/                  # Background job scheduler
+├── services/              # AI/content services (business logic)
+├── db/                    # Database layer (modularized)
+│   ├── connection.js      # SQLite connection (single shared db)
+│   ├── schema.js          # initializeDatabase(): creates tables, indexes, seeds
+│   ├── items.js           # content_items CRUD + queries
+│   ├── aiUsage.js         # ai_usage upsert/get helpers
+│   ├── researchStatements.js   # research statements CRUD
+│   ├── contentFeatures.js # per-item/statement embeddings + similarity ops
+│   └── userRatings.js     # upsert + aggregate stats
+├── database.js            # Facade re-exporting db layer (stable API)
+├── config/                # Configuration files
+└── grist_mill.db          # SQLite file location
 ```
 
 ### Frontend Architecture
