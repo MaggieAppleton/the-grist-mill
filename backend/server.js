@@ -6,7 +6,6 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const {
 	initializeDatabase,
-	insertSampleData,
 	getAllItems,
 	getItemsFiltered,
 	searchItems,
@@ -407,19 +406,15 @@ app.post("/api/feedback/rate", strictLimiter, async (req, res) => {
 		const tier = Number(rating);
 
 		if (!Number.isFinite(contentId) || contentId <= 0) {
-			return res
-				.status(400)
-				.json({
-					error: "content_item_id is required and must be a positive number",
-				});
+			return res.status(400).json({
+				error: "content_item_id is required and must be a positive number",
+			});
 		}
 		if (!Number.isFinite(statementId) || statementId <= 0) {
-			return res
-				.status(400)
-				.json({
-					error:
-						"research_statement_id is required and must be a positive number",
-				});
+			return res.status(400).json({
+				error:
+					"research_statement_id is required and must be a positive number",
+			});
 		}
 		if (!Number.isFinite(tier) || tier < 1 || tier > 4) {
 			return res
@@ -452,12 +447,9 @@ app.get("/api/feedback/stats", generalLimiter, async (req, res) => {
 			statementId !== undefined &&
 			(!Number.isFinite(statementId) || statementId <= 0)
 		) {
-			return res
-				.status(400)
-				.json({
-					error:
-						"research_statement_id, if provided, must be a positive number",
-				});
+			return res.status(400).json({
+				error: "research_statement_id, if provided, must be a positive number",
+			});
 		}
 		if (statementId) {
 			const rs = await getResearchStatementById(statementId);
