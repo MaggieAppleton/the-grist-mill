@@ -1000,6 +1000,29 @@ function getUserRatingStats({ researchStatementId } = {}) {
 	});
 }
 
+// Helper: fetch item ids by source_type and an array of source_id values
+function getItemIdsBySource(sourceType, sourceIds) {
+	return new Promise((resolve, reject) => {
+		try {
+			if (!Array.isArray(sourceIds) || sourceIds.length === 0) {
+				return resolve([]);
+			}
+			const placeholders = sourceIds.map(() => "?").join(",");
+			const sql = `SELECT id, source_id FROM content_items WHERE source_type = ? AND source_id IN (${placeholders})`;
+			db.all(
+				sql,
+				[String(sourceType), ...sourceIds.map((s) => String(s))],
+				(err, rows) => {
+					if (err) return reject(err);
+					resolve(rows || []);
+				}
+			);
+		} catch (e) {
+			reject(e);
+		}
+	});
+}
+
 module.exports = {
 	db,
 	initializeDatabase,
@@ -1029,4 +1052,6 @@ module.exports = {
 	// user ratings
 	upsertUserRating,
 	getUserRatingStats,
+	// helper: get item ids by source
+	getItemIdsBySource,
 };

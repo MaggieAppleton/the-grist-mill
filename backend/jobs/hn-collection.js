@@ -1,8 +1,21 @@
 const {
 	discoverTopAndRecentWithMinScore,
 } = require("../collectors/hackernews");
-const { insertContentItems } = require("../database");
+const {
+	insertContentItems,
+	getActiveResearchStatements,
+	updateContentFeaturesSimilarityAndTier,
+	upsertContentFeaturesEmbedding,
+	getItemIdsBySource,
+} = require("../database");
 const AIService = require("../services/ai");
+const {
+	extractContentText,
+	generateEmbeddingForText,
+	parseEmbeddingPayload,
+	cosineSimilarity,
+	determineRelevanceTier,
+} = require("../services/contentEmbeddings");
 
 // Env-configurable limits with sensible defaults
 const CONTENT_CHAR_LIMIT = Number(process.env.CONTENT_CHAR_LIMIT || 10000);
@@ -236,6 +249,71 @@ async function runHackerNewsCollection() {
 		console.log(
 			`[${new Date().toISOString()}] HN collection completed: ${inserted} items inserted, ${aiProcessedCount} AI processed`
 		);
+
+		// Integrate embeddings and similarity scoring for newly collected items
+		try {
+			const aiAvailable = new AIService().isAvailable();
+			if (!aiAvailable) {
+				console.warn(
+					`[${new Date().toISOString()}] Skipping embeddings: AI service unavailable`
+				);
+			} else if (items.length > 0) {
+				// Map source_id -> item to extract text without re-querying DB
+				const sourceIdToItem = new Map(
+					items.map((it) => [String(it.source_id), it])
+				);
+				const sourceIds = items.map((it) => String(it.source_id));
+				const rows = await getItemIdsBySource("hackernews", sourceIds);
+				// Fetch active research statements (only those with embeddings will get similarity)
+				const statements = await getActiveResearchStatements();
+				const statementsWithEmbeddings = statements
+					.map((s) => ({ ...s, _emb: parseEmbeddingPayload(s.embedding) }))
+					.filter((s) => Array.isArray(s._emb) && s._emb.length > 0);
+
+				let embedUpserts = 0;
+				let simUpdates = 0;
+
+				for (const stmt of statementsWithEmbeddings) {
+					for (const row of rows) {
+						try {
+							const original = sourceIdToItem.get(String(row.source_id));
+							if (!original) continue;
+							const text = extractContentText(original);
+							if (!text || text.trim().length === 0) continue;
+							const embedding = await generateEmbeddingForText(text);
+							await upsertContentFeaturesEmbedding(row.id, stmt.id, embedding);
+							embedUpserts += 1;
+
+							// Compute similarity and tier
+							const sim = cosineSimilarity(embedding, stmt._emb);
+							const tier = determineRelevanceTier(sim);
+							await updateContentFeaturesSimilarityAndTier(
+								row.id,
+								stmt.id,
+								sim,
+								tier
+							);
+							simUpdates += 1;
+						} catch (embedErr) {
+							console.warn(
+								`[${new Date().toISOString()}] Embedding/similarity failed for item ${
+									row.id
+								} (stmt ${stmt.id}): ${embedErr.message}`
+							);
+						}
+					}
+				}
+
+				console.log(
+					`[${new Date().toISOString()}] Embeddings integrated: ${embedUpserts} upserts, similarity updates: ${simUpdates}`
+				);
+			}
+		} catch (embIntErr) {
+			console.error(
+				`[${new Date().toISOString()}] Failed to integrate embeddings/similarity:`,
+				embIntErr
+			);
+		}
 
 		return {
 			success: true,
