@@ -1,6 +1,6 @@
 # Advanced Filtering and Ranking System
 
-Updated: September 10, 2025
+Updated: September 11, 2025
 
 ## Overview
 
@@ -193,10 +193,10 @@ Follow-up:
 
 #### Task 8B.1: Content Embedding Service
 
-- [ ] Extract content text from items (title + first 500 chars of content/summary)
-- [ ] Generate embeddings using OpenAI text-embedding-3-small
-- [ ] Store embeddings in content_features table
-- [ ] Add batch processing for existing content
+- [x] Extract content text from items (title + first 500 chars of content/summary)
+- [x] Generate embeddings using OpenAI text-embedding-3-small
+- [x] Store embeddings in content_features table
+- [x] Add batch processing for existing content
 
 **Commit**: "Add content embedding generation"
 

@@ -63,7 +63,56 @@ function initializeDatabase() {
       )
     `;
 
+		// Per-item, per-topic content features including embeddings and scores
+		const createContentFeaturesTable = `
+			CREATE TABLE IF NOT EXISTS content_features (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				content_item_id INTEGER NOT NULL,
+				research_statement_id INTEGER NOT NULL,
+				content_embedding BLOB,
+				similarity_score REAL,
+				keyword_score REAL,
+				feedback_score REAL,
+				final_score REAL,
+				relevance_tier INTEGER,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(content_item_id, research_statement_id),
+				FOREIGN KEY (content_item_id) REFERENCES content_items(id),
+				FOREIGN KEY (research_statement_id) REFERENCES research_statements(id)
+			)
+		`;
+
+		const createContentFeaturesScoreIndex = `
+			CREATE INDEX IF NOT EXISTS idx_content_features_score
+			ON content_features(research_statement_id, final_score DESC)
+		`;
+
 		db.serialize(() => {
+			function ensureContentFeaturesAndResolve() {
+				db.run(createContentFeaturesTable, (cfErr) => {
+					if (cfErr) {
+						console.error(
+							"Error creating content_features table:",
+							cfErr.message
+						);
+						return reject(cfErr);
+					}
+					db.run(createContentFeaturesScoreIndex, (cfiErr) => {
+						if (cfiErr) {
+							console.error(
+								"Error creating content_features score index:",
+								cfiErr.message
+							);
+							return reject(cfiErr);
+						}
+						console.log(
+							"content_features table and indexes created or already exist."
+						);
+						return resolve();
+					});
+				});
+			}
 			function proceedAfterContentItems() {
 				db.run(createAIUsageTable, (err) => {
 					if (err) {
@@ -160,11 +209,11 @@ function initializeDatabase() {
 															console.log(
 																"Inserted default research statement."
 															);
-															return resolve();
+															return ensureContentFeaturesAndResolve();
 														}
 													);
 												} else {
-													return resolve();
+													return ensureContentFeaturesAndResolve();
 												}
 											}
 										);
@@ -733,6 +782,85 @@ function updateResearchStatementEmbedding(id, embeddingVector) {
 	});
 }
 
+// Content features helpers (embeddings per item per statement)
+function getActiveResearchStatements() {
+	return new Promise((resolve, reject) => {
+		const sql = `
+			SELECT id, name, statement, embedding, keywords, negative_keywords, is_active, created_at, updated_at
+			FROM research_statements
+			WHERE is_active = 1
+			ORDER BY created_at DESC
+		`;
+		db.all(sql, [], (err, rows) => {
+			if (err) return reject(err);
+			resolve(rows || []);
+		});
+	});
+}
+
+function getItemsMissingEmbeddingForStatement(
+	researchStatementId,
+	{ limit = 100 } = {}
+) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+			SELECT ci.id, ci.source_type, ci.source_id, ci.title, ci.summary, ci.page_text, ci.raw_content, ci.url
+			FROM content_items ci
+			LEFT JOIN content_features cf
+			  ON cf.content_item_id = ci.id AND cf.research_statement_id = ?
+			WHERE cf.id IS NULL OR cf.content_embedding IS NULL
+			ORDER BY ci.created_at DESC
+			LIMIT ?
+		`;
+		db.all(
+			sql,
+			[Number(researchStatementId), Math.max(1, Number(limit) || 100)],
+			(err, rows) => {
+				if (err) return reject(err);
+				resolve(rows || []);
+			}
+		);
+	});
+}
+
+function upsertContentFeaturesEmbedding(
+	contentItemId,
+	researchStatementId,
+	embeddingVector
+) {
+	return new Promise((resolve, reject) => {
+		let payload = null;
+		try {
+			if (Array.isArray(embeddingVector)) {
+				payload = JSON.stringify(embeddingVector);
+			} else if (embeddingVector == null) {
+				payload = null;
+			} else if (typeof embeddingVector === "string") {
+				payload = embeddingVector;
+			} else {
+				payload = JSON.stringify(embeddingVector);
+			}
+		} catch (_) {
+			payload = null;
+		}
+		const sql = `
+			INSERT INTO content_features (content_item_id, research_statement_id, content_embedding, created_at, updated_at)
+			VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+			ON CONFLICT(content_item_id, research_statement_id) DO UPDATE SET
+			  content_embedding = excluded.content_embedding,
+			  updated_at = CURRENT_TIMESTAMP
+		`;
+		db.run(
+			sql,
+			[Number(contentItemId), Number(researchStatementId), payload],
+			function (err) {
+				if (err) return reject(err);
+				resolve(this.changes);
+			}
+		);
+	});
+}
+
 module.exports = {
 	db,
 	initializeDatabase,
@@ -753,4 +881,8 @@ module.exports = {
 	updateResearchStatement,
 	deleteResearchStatement,
 	updateResearchStatementEmbedding,
+	// content features
+	getActiveResearchStatements,
+	getItemsMissingEmbeddingForStatement,
+	upsertContentFeaturesEmbedding,
 };
