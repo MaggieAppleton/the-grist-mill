@@ -19,6 +19,9 @@ const {
 	updateResearchStatement,
 	deleteResearchStatement,
 	updateResearchStatementEmbedding,
+	// user ratings
+	upsertUserRating,
+	getUserRatingStats,
 } = require("./database");
 const AIService = require("./services/ai");
 const { initializeScheduler } = require("./jobs/scheduler");
@@ -394,6 +397,82 @@ app.post(
 		}
 	}
 );
+
+// Feedback API: rate
+app.post("/api/feedback/rate", strictLimiter, async (req, res) => {
+	try {
+		const { content_item_id, research_statement_id, rating } = req.body || {};
+		const contentId = Number(content_item_id);
+		const statementId = Number(research_statement_id);
+		const tier = Number(rating);
+
+		if (!Number.isFinite(contentId) || contentId <= 0) {
+			return res
+				.status(400)
+				.json({
+					error: "content_item_id is required and must be a positive number",
+				});
+		}
+		if (!Number.isFinite(statementId) || statementId <= 0) {
+			return res
+				.status(400)
+				.json({
+					error:
+						"research_statement_id is required and must be a positive number",
+				});
+		}
+		if (!Number.isFinite(tier) || tier < 1 || tier > 4) {
+			return res
+				.status(400)
+				.json({ error: "rating must be an integer between 1 and 4" });
+		}
+
+		// Verify existence of the research statement
+		const rs = await getResearchStatementById(statementId);
+		if (!rs) {
+			return res.status(404).json({ error: "research_statement not found" });
+		}
+
+		const changes = await upsertUserRating(contentId, statementId, tier);
+		return res.status(200).json({ ok: true, changes });
+	} catch (err) {
+		console.error("Error rating content:", err);
+		return res.status(500).json({ error: "Failed to save rating" });
+	}
+});
+
+// Feedback API: stats
+app.get("/api/feedback/stats", generalLimiter, async (req, res) => {
+	try {
+		const { research_statement_id } = req.query || {};
+		const statementId = research_statement_id
+			? Number(research_statement_id)
+			: undefined;
+		if (
+			statementId !== undefined &&
+			(!Number.isFinite(statementId) || statementId <= 0)
+		) {
+			return res
+				.status(400)
+				.json({
+					error:
+						"research_statement_id, if provided, must be a positive number",
+				});
+		}
+		if (statementId) {
+			const rs = await getResearchStatementById(statementId);
+			if (!rs)
+				return res.status(404).json({ error: "research_statement not found" });
+		}
+		const stats = await getUserRatingStats({
+			researchStatementId: statementId,
+		});
+		return res.json(stats);
+	} catch (err) {
+		console.error("Error fetching feedback stats:", err);
+		return res.status(500).json({ error: "Failed to fetch feedback stats" });
+	}
+});
 
 // Settings endpoints
 const fs = require("fs").promises;

@@ -4,7 +4,9 @@
 	"main": "index.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"start": "node server.js"
+		"start": "node server.js",
+		"embed:content": "node scripts/generate_content_embeddings.js",
+		"score:similarity": "node scripts/compute_similarity_scores.js"
 	},
 	"keywords": [],
 	"author": "",

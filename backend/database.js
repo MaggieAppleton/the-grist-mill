@@ -88,6 +88,20 @@ function initializeDatabase() {
 			ON content_features(research_statement_id, final_score DESC)
 		`;
 
+		// User ratings for content relevance per research statement
+		const createUserRatingsTable = `
+			CREATE TABLE IF NOT EXISTS user_ratings (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				content_item_id INTEGER NOT NULL,
+				research_statement_id INTEGER NOT NULL,
+				rating INTEGER NOT NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(content_item_id, research_statement_id),
+				FOREIGN KEY (content_item_id) REFERENCES content_items(id),
+				FOREIGN KEY (research_statement_id) REFERENCES research_statements(id)
+			)
+		`;
+
 		db.serialize(() => {
 			function ensureContentFeaturesAndResolve() {
 				db.run(createContentFeaturesTable, (cfErr) => {
@@ -131,129 +145,141 @@ function initializeDatabase() {
 						}
 						console.log("AI usage date index created or already exists.");
 
-						// Create research_statements table and seed default if empty
-						db.run(createResearchStatementsTable, (rsErr) => {
-							if (rsErr) {
+						// Ensure user_ratings table exists
+						db.run(createUserRatingsTable, (urErr) => {
+							if (urErr) {
 								console.error(
-									"Error creating research_statements table:",
-									rsErr.message
+									"Error creating user_ratings table:",
+									urErr.message
 								);
-								return reject(rsErr);
+								return reject(urErr);
 							}
-							console.log(
-								"research_statements table created or already exists."
-							);
+							console.log("user_ratings table created or already exists.");
 
-							// Check schema for keywords columns and seed default topic
-							db.all(
-								"PRAGMA table_info(research_statements)",
-								[],
-								(infoErr, cols) => {
-									if (infoErr) {
-										console.error(
-											"Error reading research_statements schema:",
-											infoErr.message
-										);
-										return reject(infoErr);
-									}
-									const existing = new Set((cols || []).map((r) => r.name));
-									const required = [
-										"id",
-										"name",
-										"statement",
-										"embedding",
-										"keywords",
-										"negative_keywords",
-										"is_active",
-										"created_at",
-										"updated_at",
-									];
-									const missing = required.filter((c) => !existing.has(c));
+							// Create research_statements table and seed default if empty
+							db.run(createResearchStatementsTable, (rsErr) => {
+								if (rsErr) {
+									console.error(
+										"Error creating research_statements table:",
+										rsErr.message
+									);
+									return reject(rsErr);
+								}
+								console.log(
+									"research_statements table created or already exists."
+								);
 
-									const seed = () => {
-										db.get(
-											"SELECT COUNT(*) as count FROM research_statements",
-											[],
-											(countErr, row) => {
-												if (countErr) {
-													console.error(
-														"Error counting research_statements:",
-														countErr.message
-													);
-													return reject(countErr);
-												}
-												if (!row || Number(row.count) === 0) {
-													const insertDefault = `
+								// Check schema for keywords columns and seed default topic
+								db.all(
+									"PRAGMA table_info(research_statements)",
+									[],
+									(infoErr, cols) => {
+										if (infoErr) {
+											console.error(
+												"Error reading research_statements schema:",
+												infoErr.message
+											);
+											return reject(infoErr);
+										}
+										const existing = new Set((cols || []).map((r) => r.name));
+										const required = [
+											"id",
+											"name",
+											"statement",
+											"embedding",
+											"keywords",
+											"negative_keywords",
+											"is_active",
+											"created_at",
+											"updated_at",
+										];
+										const missing = required.filter((c) => !existing.has(c));
+
+										const seed = () => {
+											db.get(
+												"SELECT COUNT(*) as count FROM research_statements",
+												[],
+												(countErr, row) => {
+													if (countErr) {
+														console.error(
+															"Error counting research_statements:",
+															countErr.message
+														);
+														return reject(countErr);
+													}
+													if (!row || Number(row.count) === 0) {
+														const insertDefault = `
 													INSERT INTO research_statements (name, statement, keywords, negative_keywords, is_active)
 													VALUES (?, ?, ?, ?, 1)
 												`;
-													const defaultName = "AI/LLM Research";
-													const defaultStatement =
-														"Focus on AI/LLM, developer tools, code generation, RAG/embeddings, agent systems, and practical applications improving software development workflows.";
-													db.run(
-														insertDefault,
-														[
-															defaultName,
-															defaultStatement,
-															JSON.stringify([]),
-															JSON.stringify([]),
-														],
-														(insErr) => {
-															if (insErr) {
-																console.error(
-																	"Error inserting default research statement:",
-																	insErr.message
+														const defaultName = "AI/LLM Research";
+														const defaultStatement =
+															"Focus on AI/LLM, developer tools, code generation, RAG/embeddings, agent systems, and practical applications improving software development workflows.";
+														db.run(
+															insertDefault,
+															[
+																defaultName,
+																defaultStatement,
+																JSON.stringify([]),
+																JSON.stringify([]),
+															],
+															(insErr) => {
+																if (insErr) {
+																	console.error(
+																		"Error inserting default research statement:",
+																		insErr.message
+																	);
+																	return reject(insErr);
+																}
+																console.log(
+																	"Inserted default research statement."
 																);
-																return reject(insErr);
+																return ensureContentFeaturesAndResolve();
 															}
-															console.log(
-																"Inserted default research statement."
-															);
-															return ensureContentFeaturesAndResolve();
-														}
-													);
-												} else {
-													return ensureContentFeaturesAndResolve();
+														);
+													} else {
+														return ensureContentFeaturesAndResolve();
+													}
 												}
+											);
+										};
+
+										if (missing.length === 0) {
+											return seed();
+										}
+										console.warn(
+											`Resetting 'research_statements' table to ensure required columns: ${missing.join(
+												", "
+											)}`
+										);
+										db.run(
+											"DROP TABLE IF EXISTS research_statements",
+											(dropErr) => {
+												if (dropErr) {
+													console.error(
+														"Error dropping research_statements:",
+														dropErr.message
+													);
+													return reject(dropErr);
+												}
+												db.run(createResearchStatementsTable, (reErr) => {
+													if (reErr) {
+														console.error(
+															"Error recreating research_statements table:",
+															reErr.message
+														);
+														return reject(reErr);
+													}
+													console.log(
+														"research_statements table reset with correct schema."
+													);
+													seed();
+												});
 											}
 										);
-									};
-
-									if (missing.length === 0) {
-										return seed();
 									}
-									console.warn(
-										`Resetting 'research_statements' table to ensure required columns: ${missing.join(
-											", "
-										)}`
-									);
-									db.run(
-										"DROP TABLE IF EXISTS research_statements",
-										(dropErr) => {
-											if (dropErr) {
-												console.error(
-													"Error dropping research_statements:",
-													dropErr.message
-												);
-												return reject(dropErr);
-											}
-											db.run(createResearchStatementsTable, (reErr) => {
-												if (reErr) {
-													console.error(
-														"Error recreating research_statements table:",
-														reErr.message
-													);
-													return reject(reErr);
-												}
-												console.log(
-													"research_statements table reset with correct schema."
-												);
-												seed();
-											});
-										}
-									);
-								}
-							);
+								);
+							});
 						});
 					});
 				});
@@ -861,6 +887,119 @@ function upsertContentFeaturesEmbedding(
 	});
 }
 
+function getItemsMissingSimilarityForStatement(
+	researchStatementId,
+	{ limit = 100 } = {}
+) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+			SELECT cf.content_item_id, cf.research_statement_id, cf.content_embedding
+			FROM content_features cf
+			WHERE cf.research_statement_id = ?
+			  AND cf.content_embedding IS NOT NULL
+			  AND (cf.similarity_score IS NULL)
+			ORDER BY cf.updated_at ASC
+			LIMIT ?
+		`;
+		db.all(
+			sql,
+			[Number(researchStatementId), Math.max(1, Number(limit) || 100)],
+			(err, rows) => {
+				if (err) return reject(err);
+				resolve(rows || []);
+			}
+		);
+	});
+}
+
+function updateContentFeaturesSimilarityAndTier(
+	contentItemId,
+	researchStatementId,
+	similarityScore,
+	relevanceTier
+) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+			UPDATE content_features
+			SET similarity_score = ?,
+			    relevance_tier = ?,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE content_item_id = ? AND research_statement_id = ?
+		`;
+		db.run(
+			sql,
+			[
+				Number(similarityScore) || 0,
+				Number(relevanceTier) || null,
+				Number(contentItemId),
+				Number(researchStatementId),
+			],
+			function (err) {
+				if (err) return reject(err);
+				resolve(this.changes);
+			}
+		);
+	});
+}
+
+// User ratings helpers
+function upsertUserRating(contentItemId, researchStatementId, rating) {
+	return new Promise((resolve, reject) => {
+		const normalized = Math.max(1, Math.min(4, Number(rating) || 1));
+		const sql = `
+            INSERT INTO user_ratings (content_item_id, research_statement_id, rating, created_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(content_item_id, research_statement_id) DO UPDATE SET
+                rating = excluded.rating,
+                created_at = CASE
+                    WHEN user_ratings.rating IS NULL OR user_ratings.rating = excluded.rating THEN user_ratings.created_at
+                    ELSE CURRENT_TIMESTAMP
+                END
+        `;
+		db.run(
+			sql,
+			[Number(contentItemId), Number(researchStatementId), normalized],
+			function (err) {
+				if (err) return reject(err);
+				resolve(this.changes);
+			}
+		);
+	});
+}
+
+function getUserRatingStats({ researchStatementId } = {}) {
+	return new Promise((resolve, reject) => {
+		const params = [];
+		let where = "";
+		if (researchStatementId) {
+			where = "WHERE research_statement_id = ?";
+			params.push(Number(researchStatementId));
+		}
+		const sql = `
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as very_relevant,
+                SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as relevant,
+                SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as weakly_relevant,
+                SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as not_relevant
+            FROM user_ratings
+            ${where}
+        `;
+		db.get(sql, params, (err, row) => {
+			if (err) return reject(err);
+			resolve(
+				row || {
+					total: 0,
+					very_relevant: 0,
+					relevant: 0,
+					weakly_relevant: 0,
+					not_relevant: 0,
+				}
+			);
+		});
+	});
+}
+
 module.exports = {
 	db,
 	initializeDatabase,
@@ -885,4 +1024,9 @@ module.exports = {
 	getActiveResearchStatements,
 	getItemsMissingEmbeddingForStatement,
 	upsertContentFeaturesEmbedding,
+	getItemsMissingSimilarityForStatement,
+	updateContentFeaturesSimilarityAndTier,
+	// user ratings
+	upsertUserRating,
+	getUserRatingStats,
 };

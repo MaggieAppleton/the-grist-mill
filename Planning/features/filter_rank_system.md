@@ -202,12 +202,12 @@ Follow-up:
 
 #### Task 8B.2: Similarity Calculation
 
-- [ ] Implement cosine similarity calculation
-- [ ] Compute similarity between content and active topics’ research statements
-- [ ] Store similarity scores in content_features table
-- [ ] Add threshold-based relevance tier assignment
+- [x] Implement cosine similarity calculation
+- [x] Compute similarity between content and active topics’ research statements
+- [x] Store similarity scores in content_features table
+- [x] Add threshold-based relevance tier assignment
 
-**Commit**: "Add content-research statement similarity scoring"
+**Commit**: "Add content-research statement similarity scoring" ✅ COMPLETED (September 11, 2025)
 
 #### Task 8B.3: Integration with Content Collection
 
