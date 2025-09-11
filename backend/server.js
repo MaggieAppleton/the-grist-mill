@@ -22,6 +22,9 @@ const {
 	// user ratings
 	upsertUserRating,
 	getUserRatingStats,
+	// favorites
+	toggleFavorite,
+	getFavoriteItems,
 } = require("./database");
 const AIService = require("./services/ai");
 const { initializeScheduler } = require("./jobs/scheduler");
@@ -471,6 +474,82 @@ app.get("/api/feedback/stats", generalLimiter, async (req, res) => {
 	} catch (err) {
 		console.error("Error fetching feedback stats:", err);
 		return res.status(500).json({ error: "Failed to fetch feedback stats" });
+	}
+});
+
+// Favorites API endpoints
+app.post("/api/favorites/toggle", strictLimiter, async (req, res) => {
+	try {
+		const { content_item_id, is_favorite, research_statement_id } = req.body || {};
+		const contentId = Number(content_item_id);
+		const isFav = Boolean(is_favorite);
+		const statementId = research_statement_id ? Number(research_statement_id) : null;
+
+		if (!Number.isFinite(contentId) || contentId <= 0) {
+			return res.status(400).json({
+				error: "content_item_id is required and must be a positive number",
+			});
+		}
+
+		// Validate research_statement_id if provided
+		if (statementId !== null && (!Number.isFinite(statementId) || statementId <= 0)) {
+			return res.status(400).json({
+				error: "research_statement_id, if provided, must be a positive number",
+			});
+		}
+
+		// If favoriting with research statement, verify it exists
+		if (isFav && statementId) {
+			const rs = await getResearchStatementById(statementId);
+			if (!rs) {
+				return res.status(404).json({ error: "research_statement not found" });
+			}
+		}
+
+		const result = await toggleFavorite(contentId, isFav, statementId);
+		return res.json({ 
+			ok: true, 
+			is_favorite: isFav,
+			changes: result.changes,
+			rating_set: result.ratingSet
+		});
+	} catch (err) {
+		console.error("Error toggling favorite:", err);
+		if (err.message === "Content item not found") {
+			return res.status(404).json({ error: "Content item not found" });
+		}
+		return res.status(500).json({ error: "Failed to toggle favorite" });
+	}
+});
+
+app.get("/api/favorites", generalLimiter, async (req, res) => {
+	try {
+		const { only, limit, offset } = req.query;
+		
+		// If only=true, return only favorites
+		if (only === "true") {
+			const favorites = await getFavoriteItems({
+				limit: Number(limit) || 50,
+				offset: Number(offset) || 0
+			});
+			const augmented = Array.isArray(favorites)
+				? favorites.map((it) => ({ ...it, comments_url: getHNCommentsUrl(it) }))
+				: favorites;
+			return res.json(augmented);
+		}
+
+		// Otherwise, fall back to regular items endpoint behavior (all items)
+		const items = await getItemsFiltered({ 
+			limit: Number(limit) || 50, 
+			offset: Number(offset) || 0 
+		});
+		const augmented = Array.isArray(items)
+			? items.map((it) => ({ ...it, comments_url: getHNCommentsUrl(it) }))
+			: items;
+		res.json(augmented);
+	} catch (error) {
+		console.error("Error fetching favorites:", error);
+		res.status(500).json({ error: "Failed to fetch favorites" });
 	}
 });
 

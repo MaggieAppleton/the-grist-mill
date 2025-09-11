@@ -28,6 +28,8 @@ function initializeDatabase() {
         raw_content TEXT,
         url TEXT,
         highlight BOOLEAN DEFAULT 0,
+        is_favorite BOOLEAN DEFAULT 0,
+        favorited_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         collected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(source_type, source_id)
@@ -312,6 +314,8 @@ function initializeDatabase() {
 						"raw_content",
 						"url",
 						"highlight",
+						"is_favorite",
+						"favorited_at",
 						"created_at",
 						"collected_at",
 					];
@@ -413,7 +417,7 @@ function insertSampleData() {
 function getAllItems() {
 	return new Promise((resolve, reject) => {
 		const query = `
-      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, created_at, collected_at
+      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at, created_at, collected_at
       FROM content_items 
       ORDER BY created_at DESC
     `;
@@ -442,7 +446,7 @@ function getItemsFiltered({ source, limit = 50, offset = 0 } = {}) {
 			? `WHERE ${whereClauses.join(" AND ")}`
 			: "";
 		const query = `
-      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, created_at, collected_at
+      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at, created_at, collected_at
       FROM content_items
       ${whereSQL}
       ORDER BY created_at DESC
@@ -489,7 +493,7 @@ function searchItems({ query, source, limit = 50, offset = 0 } = {}) {
 
 		const whereSQL = `WHERE ${whereClauses.join(" AND ")}`;
 		const searchQuery = `
-			SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, created_at, collected_at
+			SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at, created_at, collected_at
 			FROM content_items
 			${whereSQL}
 			ORDER BY 
@@ -516,8 +520,8 @@ function searchItems({ query, source, limit = 50, offset = 0 } = {}) {
 function insertContentItem(item) {
 	return new Promise((resolve, reject) => {
 		const insertQuery = `
-      INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, page_text, raw_content, url, highlight)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 		db.run(
 			insertQuery,
@@ -530,6 +534,8 @@ function insertContentItem(item) {
 				item.raw_content || null,
 				item.url || null,
 				item.highlight || false,
+				item.is_favorite || false,
+				item.favorited_at || null,
 			],
 			function (err) {
 				if (err) {
@@ -547,7 +553,7 @@ function insertContentItems(items) {
 		db.serialize(() => {
 			db.run("BEGIN TRANSACTION");
 			const stmt = db.prepare(
-				"INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, page_text, raw_content, url, highlight) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+				"INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 			);
 			let insertedCount = 0;
 			for (const item of items) {
@@ -561,6 +567,8 @@ function insertContentItems(items) {
 						item.raw_content || null,
 						item.url || null,
 						item.highlight || false,
+						item.is_favorite || false,
+						item.favorited_at || null,
 					],
 					function (err) {
 						if (!err && this.changes > 0) {
@@ -1023,6 +1031,95 @@ function getItemIdsBySource(sourceType, sourceIds) {
 	});
 }
 
+// Favorites helpers
+function toggleFavorite(contentItemId, isFavorite, activeResearchStatementId) {
+	return new Promise((resolve, reject) => {
+		const itemId = Number(contentItemId);
+		if (!Number.isFinite(itemId) || itemId <= 0) {
+			return reject(new Error("Invalid content_item_id"));
+		}
+
+		db.serialize(() => {
+			db.run("BEGIN TRANSACTION", (beginErr) => {
+				if (beginErr) return reject(beginErr);
+
+				// Update the favorite status
+				const updateSql = `
+					UPDATE content_items 
+					SET is_favorite = ?, 
+					    favorited_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
+					WHERE id = ?
+				`;
+				
+				db.run(updateSql, [isFavorite ? 1 : 0, isFavorite, itemId], function (updateErr) {
+					if (updateErr) {
+						db.run("ROLLBACK");
+						return reject(updateErr);
+					}
+
+					if (this.changes === 0) {
+						db.run("ROLLBACK");
+						return reject(new Error("Content item not found"));
+					}
+
+					// If favoriting and we have an active research statement, also set rating to 4
+					if (isFavorite && activeResearchStatementId) {
+						const statementId = Number(activeResearchStatementId);
+						if (Number.isFinite(statementId) && statementId > 0) {
+							upsertUserRating(itemId, statementId, 4)
+								.then(() => {
+									db.run("COMMIT", (commitErr) => {
+										if (commitErr) return reject(commitErr);
+										resolve({ changes: this.changes, ratingSet: true });
+									});
+								})
+								.catch((ratingErr) => {
+									console.warn("Failed to set rating when favoriting:", ratingErr.message);
+									// Don't fail the whole transaction if rating fails
+									db.run("COMMIT", (commitErr) => {
+										if (commitErr) return reject(commitErr);
+										resolve({ changes: this.changes, ratingSet: false });
+									});
+								});
+						} else {
+							db.run("COMMIT", (commitErr) => {
+								if (commitErr) return reject(commitErr);
+								resolve({ changes: this.changes, ratingSet: false });
+							});
+						}
+					} else {
+						db.run("COMMIT", (commitErr) => {
+							if (commitErr) return reject(commitErr);
+							resolve({ changes: this.changes, ratingSet: false });
+						});
+					}
+				});
+			});
+		});
+	});
+}
+
+function getFavoriteItems({ limit = 50, offset = 0 } = {}) {
+	return new Promise((resolve, reject) => {
+		const query = `
+			SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at, created_at, collected_at
+			FROM content_items
+			WHERE is_favorite = 1
+			ORDER BY favorited_at DESC, created_at DESC
+			LIMIT ? OFFSET ?
+		`;
+		
+		db.all(query, [Number(limit) || 50, Number(offset) || 0], (err, rows) => {
+			if (err) {
+				console.error("Error fetching favorite items:", err.message);
+				reject(err);
+			} else {
+				resolve(rows || []);
+			}
+		});
+	});
+}
+
 module.exports = {
 	db,
 	initializeDatabase,
@@ -1054,4 +1151,7 @@ module.exports = {
 	getUserRatingStats,
 	// helper: get item ids by source
 	getItemIdsBySource,
+	// favorites
+	toggleFavorite,
+	getFavoriteItems,
 };
