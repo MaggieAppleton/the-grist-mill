@@ -7,6 +7,8 @@ const {
 	updateContentFeaturesSimilarityAndTier,
 	upsertContentFeaturesEmbedding,
 	getItemIdsBySource,
+	getRatedItemsWithEmbeddings,
+	updateContentFeaturesFeedbackScore,
 } = require("../database");
 const AIService = require("../services/ai");
 const {
@@ -307,6 +309,75 @@ async function runHackerNewsCollection() {
 				console.log(
 					`[${new Date().toISOString()}] Embeddings integrated: ${embedUpserts} upserts, similarity updates: ${simUpdates}`
 				);
+
+				// Compute feedback scores for newly added content
+				try {
+					let feedbackUpdates = 0;
+					
+					for (const stmt of statementsWithEmbeddings) {
+						// Get rated items for this research statement
+						const ratedItems = await getRatedItemsWithEmbeddings(stmt.id);
+						
+						if (ratedItems.length === 0) {
+							console.log(
+								`[${new Date().toISOString()}] No rated items available for statement ${stmt.id} - skipping feedback scoring`
+							);
+							continue;
+						}
+
+						// Get newly processed items that need feedback scores
+						const itemsToScore = [];
+						for (const row of rows) {
+							// Check if this item has embedding for this statement
+							const hasEmbedding = embedUpserts > 0; // We just processed embeddings
+							if (hasEmbedding) {
+								const original = sourceIdToItem.get(String(row.source_id));
+								if (original) {
+									const text = extractContentText(original);
+									if (text && text.trim().length > 0) {
+										const embedding = await generateEmbeddingForText(text);
+										itemsToScore.push({
+											content_item_id: row.id,
+											research_statement_id: stmt.id,
+											content_embedding: embedding,
+										});
+									}
+								}
+							}
+						}
+
+						if (itemsToScore.length > 0) {
+							const { batchComputeFeedbackScores } = require("../services/feedbackScoring");
+							const feedbackResults = batchComputeFeedbackScores(itemsToScore, ratedItems);
+							
+							for (const result of feedbackResults) {
+								try {
+									await updateContentFeaturesFeedbackScore(
+										result.content_item_id,
+										result.research_statement_id,
+										result.feedback_score
+									);
+									feedbackUpdates += 1;
+								} catch (updateErr) {
+									console.warn(
+										`[${new Date().toISOString()}] Failed to update feedback score for item ${result.content_item_id} (stmt ${stmt.id}): ${updateErr.message}`
+									);
+								}
+							}
+						}
+					}
+
+					if (feedbackUpdates > 0) {
+						console.log(
+							`[${new Date().toISOString()}] Feedback scores computed: ${feedbackUpdates} updates`
+						);
+					}
+				} catch (feedbackErr) {
+					console.warn(
+						`[${new Date().toISOString()}] Failed to compute feedback scores:`,
+						feedbackErr.message
+					);
+				}
 			}
 		} catch (embIntErr) {
 			console.error(
