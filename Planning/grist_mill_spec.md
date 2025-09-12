@@ -1,6 +1,6 @@
 # The Grist Mill - Product Specification
 
-Updated: August 26, 2025 8:33AM
+Updated: September 11, 2025 5:00PM BST
 
 ## Overview
 
@@ -82,27 +82,49 @@ Note: The application is and will remain single-user only. Concepts like favorit
 
 ```
 /backend
-├── src/
-│   ├── api/           # Express routes
-│   ├── collectors/    # Source-specific collectors
-│   ├── services/      # AI service, database service
-│   ├── jobs/          # Background job scheduler
-│   ├── models/        # Database models/schemas
-│   └── utils/         # Shared utilities
-├── database/          # SQLite file location
-└── config/           # Configuration files
+├── collectors/            # Source-specific collectors
+├── jobs/                  # Background job scheduler
+├── services/              # AI/content services (business logic)
+├── db/                    # Database layer (modularized)
+│   ├── connection.js      # SQLite connection (single shared db)
+│   ├── schema.js          # initializeDatabase(): creates tables, indexes, seeds
+│   ├── items.js           # content_items CRUD + queries
+│   ├── aiUsage.js         # ai_usage upsert/get helpers
+│   ├── researchStatements.js   # research statements CRUD
+│   ├── contentFeatures.js # per-item/statement embeddings + similarity ops
+│   └── userRatings.js     # upsert + aggregate stats
+├── database.js            # Facade re-exporting db layer (stable API)
+├── config/                # Configuration files
+└── grist_mill.db          # SQLite file location
 ```
 
 ### Frontend Architecture
 
 ```
 /frontend
+├── public/                    # Static assets
 ├── src/
-├── components/    # React components
-├── services/      # API client
-├── hooks/         # Custom React hooks
-└── styles/        # CSS/styling
-└── public/        # Static assets
+│   ├── main.jsx               # App entry
+│   ├── App.jsx                # Root component
+│   ├── index.css              # Global styles
+│   ├── App.css                # App-level styles
+│   ├── assets/                # Static assets used in the app
+│   ├── components/            # React components
+│   │   ├── HeaderBar/
+│   │   ├── Timeline/
+│   │   └── modals/
+│   ├── hooks/                 # Custom React hooks
+│   │   ├── useFeed.js
+│   │   ├── useResearchStatements.js
+│   │   ├── useSearch.js
+│   │   └── useSettings.js
+│   ├── services/              # API client
+│   │   └── api.js
+│   └── utils/                 # Helpers (dates, markdown, etc.)
+│       ├── dates.js
+│       ├── items.js
+│       └── markdown.js
+└── dist/                      # Build output (Vite)
 ```
 
 ## Database Schema
@@ -113,13 +135,37 @@ Note: The application is and will remain single-user only. Concepts like favorit
 
 ### Endpoints
 
-- `GET /api/items` - Retrieve content items
-  - Query params: `limit` (default 50), `offset`, `source`
-  - Response: Array of content items with metadata
-- `GET /api/health` - Health check endpoint
-- `GET /api/usage` - Get daily AI usage and cost tracking
-- `POST /api/collectors/trigger/:name` - Manual collector trigger (dev only)
-- `POST /api/collectors/hackernews` - Trigger Hacker News collection (MVP)
+- `GET /api/health` - Health check
+- `GET /api/items` - List content items
+  - Query params: `source`, `limit`, `offset`
+- `GET /api/search` - Full-text search across items
+  - Query params: `q` (required), `source`, `limit` (default 50), `offset` (default 0)
+- `GET /api/usage` - Today's AI usage and budget summary
+
+- Research Statements
+  - `GET /api/research-statements` - List all research statements
+  - `GET /api/research-statements/:id` - Get one
+  - `POST /api/research-statements` - Create (body: `name`, `statement`, `keywords[]`, `negative_keywords[]`, `is_active`)
+  - `PUT /api/research-statements/:id` - Update
+  - `DELETE /api/research-statements/:id` - Delete
+  - `POST /api/research-statements/:id/regenerate-embedding` - Rebuild embedding
+
+- Feedback
+  - `POST /api/feedback/rate` - Rate relevance (body: `content_item_id`, `research_statement_id`, `rating` 1-4)
+  - `GET /api/feedback/stats` - Aggregate ratings (query: `research_statement_id` optional)
+
+- Settings
+  - `GET /api/settings` - Get user settings
+  - `PUT /api/settings` - Update user settings
+
+- Collectors
+  - `POST /api/collectors/hackernews` - Trigger Hacker News collection (runs in background)
+
+- AI
+  - `GET /api/ai/test` - Test AI service connectivity
+
+- Development utilities
+  - `POST /api/test` - Simple test endpoint
 
 ### Content Item Response Format
 
@@ -201,83 +247,6 @@ class HackerNewsCollector extends BaseCollector {
 	}
 }
 ```
-
-## Configuration Schema
-
-### Environment Variables (`.env`)
-
-```bash
-# Required API keys
-OPENAI_API_KEY=your_openai_api_key
-
-# HN collection configuration
-HN_MAX_ITEMS=50
-HN_QUERY=ai,llm,language model,gpt,openai,anthropic,claude,llama,transformer,rag,embedding,fine-tuning,copilot,cursor,code generation,agents
-```
-
-### `config/default.json`
-
-```json
-{
-	"database": {
-		"path": "./database/dashboard.db"
-	},
-	"ai": {
-		"provider": "openai",
-		"model": "gpt-4o-mini",
-		"maxTokens": 500,
-		"dailyBudgetUSD": 1.0,
-		"costPerThousandTokens": 0.00015
-	},
-	"collectors": {
-		"discord": {
-			"enabled": true,
-			"schedule": "0 6 * * *",
-			"rateLimitMs": 100,
-			"initialSyncDays": 1,
-			"servers": [
-				{
-					"name": "Tech Community",
-					"guildId": "123456789",
-					"excludedChannels": ["spam", "bot-commands"]
-				},
-				{
-					"name": "Dev Community",
-					"guildId": "987654321",
-					"excludedChannels": ["general", "random"]
-				}
-			]
-		}
-	},
-	"server": {
-		"port": 3001
-	},
-	"logging": {
-		"level": "info",
-		"includeTimestamp": true
-	}
-}
-```
-
-## Development Setup
-
-1. **Prerequisites**: Node.js 18+, npm
-2. **Installation**:
-   ```bash
-   npm install
-   cd backend && npm install
-   cd ../frontend && npm install
-   ```
-3. **Environment**: Create `.env` file with required API keys (see Environment Variables section)
-4. **Database**: Auto-created SQLite file on first run
-5. **Initial Sync**:
-   ```bash
-   npm run collect:discord --initial  # Optional: fetch last 1-2 days
-   ```
-6. **Development**:
-   ```bash
-   npm run dev  # Starts both backend and frontend
-   ```
 
 ## Job Scheduling
 

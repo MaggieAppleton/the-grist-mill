@@ -211,11 +211,11 @@ Follow-up:
 
 #### Task 8B.3: Integration with Content Collection
 
-- [ ] Generate embeddings and similarity scores during HN collection
-- [ ] Update existing content items with embeddings
-- [ ] Test with real HN data
+- [x] Generate embeddings and similarity scores during HN collection
+- [x] Update existing content items with embeddings
+- [x] Test with real HN data
 
-**Commit**: "Integrate embedding generation with content collection"
+**Commit**: "Integrate embedding generation with content collection" ✅ COMPLETED (September 11, 2025)
 
 ---
 
