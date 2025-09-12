@@ -99,8 +99,23 @@ function searchItems({ query, source, limit = 50, offset = 0 } = {}) {
 function insertContentItem(item) {
 	return new Promise((resolve, reject) => {
 		const insertQuery = `
-		      INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, page_text, raw_content, url, highlight)
-		      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		      INSERT OR IGNORE INTO content_items (
+		        source_type,
+		        source_id,
+		        title,
+		        summary,
+		        page_text,
+		        raw_content,
+		        url,
+		        highlight,
+		        created_at,
+		        collected_at
+		      )
+		      VALUES (
+		        ?, ?, ?, ?, ?, ?, ?, ?,
+		        COALESCE(?, CURRENT_TIMESTAMP),
+		        COALESCE(?, CURRENT_TIMESTAMP)
+		      )
 		    `;
 		db.run(
 			insertQuery,
@@ -113,6 +128,8 @@ function insertContentItem(item) {
 				item.raw_content || null,
 				item.url || null,
 				item.highlight || false,
+				item.created_at || null,
+				item.collected_at || null,
 			],
 			function (err) {
 				if (err) {
@@ -129,7 +146,22 @@ function insertContentItems(items) {
 		db.serialize(() => {
 			db.run("BEGIN TRANSACTION");
 			const stmt = db.prepare(
-				"INSERT OR IGNORE INTO content_items (source_type, source_id, title, summary, page_text, raw_content, url, highlight) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+				`INSERT OR IGNORE INTO content_items (
+					  source_type,
+					  source_id,
+					  title,
+					  summary,
+					  page_text,
+					  raw_content,
+					  url,
+					  highlight,
+					  created_at,
+					  collected_at
+					) VALUES (
+					  ?, ?, ?, ?, ?, ?, ?, ?,
+					  COALESCE(?, CURRENT_TIMESTAMP),
+					  COALESCE(?, CURRENT_TIMESTAMP)
+					)`
 			);
 			let insertedCount = 0;
 			for (const item of items) {
@@ -143,6 +175,8 @@ function insertContentItems(items) {
 						item.raw_content || null,
 						item.url || null,
 						item.highlight || false,
+						item.created_at || null,
+						item.collected_at || null,
 					],
 					function (err) {
 						if (!err && this.changes > 0) {

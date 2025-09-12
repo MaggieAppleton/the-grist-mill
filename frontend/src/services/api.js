@@ -160,3 +160,49 @@ export async function regenerateResearchStatementEmbedding(id) {
 	}
 	return res.json();
 }
+
+// Feedback / Ratings API
+export async function rateItem({
+	content_item_id,
+	research_statement_id,
+	rating,
+}) {
+	const res = await fetch("/api/feedback/rate", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ content_item_id, research_statement_id, rating }),
+	});
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		const error = new Error(`Failed to rate item: ${res.status}`);
+		error.status = res.status;
+		error.body = text;
+		throw error;
+	}
+	return res.json();
+}
+
+// Favorites API
+export async function toggleFavorite({
+	content_item_id,
+	is_favorite,
+	research_statement_id,
+}) {
+	const res = await fetch("/api/favorites/toggle", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			content_item_id,
+			is_favorite,
+			research_statement_id,
+		}),
+	});
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		const error = new Error(`Failed to toggle favorite: ${res.status}`);
+		error.status = res.status;
+		error.body = text;
+		throw error;
+	}
+	return res.json();
+}

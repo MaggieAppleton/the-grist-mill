@@ -174,6 +174,10 @@ async function runHackerNewsCollection() {
 					(f.id ? `https://news.ycombinator.com/item?id=${f.id}` : null),
 				highlight: false,
 				page_text: null,
+				created_at:
+					typeof f.time === "number"
+						? new Date(f.time * 1000).toISOString()
+						: null,
 			};
 
 			// Populate page_text for all items

@@ -9,6 +9,7 @@ import Timeline from "./components/Timeline/Timeline";
 import useFeed from "./hooks/useFeed";
 import useSearch from "./hooks/useSearch";
 import useSettings from "./hooks/useSettings";
+import useResearchStatements from "./hooks/useResearchStatements";
 
 function Dashboard() {
 	const { items, loading, error, isRefreshing, retry, refresh } = useFeed({
@@ -35,6 +36,12 @@ function Dashboard() {
 		load: loadSettings,
 		save: saveSettings,
 	} = useSettings();
+
+	// Load research statements and pick active one (fallback to first)
+	const { topics } = useResearchStatements({ autoLoad: true });
+	const activeResearchStatementId = Array.isArray(topics)
+		? (topics.find((t) => t.is_active) || topics[0])?.id
+		: undefined;
 
 	async function retryFetchItems() {
 		await retry();
@@ -134,7 +141,12 @@ function Dashboard() {
 					</div>
 				</div>
 			)}
-			{sortedItems && <Timeline items={sortedItems} />}
+			{sortedItems && (
+				<Timeline
+					items={sortedItems}
+					activeResearchStatementId={activeResearchStatementId}
+				/>
+			)}
 
 			{!loading && !error && Array.isArray(items) && items.length === 0 && (
 				<div className="empty-state">

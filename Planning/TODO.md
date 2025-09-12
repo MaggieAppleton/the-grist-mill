@@ -8,3 +8,7 @@
 
 - [] Refreshing results is slow / doesn't show up in the interface
 - [] Cost modal isn't showing accumulating cost over time. Seems to refresh every day?
+
+- [] Empty state on dashboard
+- [] Fix top menu bar layout collapse
+- [] Script to seed database with 3+days of HN items after DB reset

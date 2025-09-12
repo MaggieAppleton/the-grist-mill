@@ -1,160 +1,261 @@
 /* Timeline Item Styles - Based on Design Mockup */
 
 .timeline-item {
-  list-style: none;
-  margin: 0 0 8px 0;
-  padding: 0;
-  position: relative;
+	list-style: none;
+	margin: 0 0 8px 0;
+	padding: 0;
+	position: relative;
 }
 
 .timeline-item-card {
-  border-radius: 8px;
-  padding: 16px;
-  position: relative;
-  transition: all 0.2s ease;
+	border-radius: 8px;
+	padding: 16px;
+	position: relative;
+	transition: all 0.2s ease;
 }
 
 /* High relevance items - white background with full content */
 .timeline-item-card.high-relevance {
-  background-color: var(--color-card);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	background-color: var(--color-card);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Low relevance items - white background with 50% opacity */
 .timeline-item-card.low-relevance {
-  background-color: rgba(255, 255, 255, 0.5);
+	background-color: rgba(255, 255, 255, 0.5);
 }
 
 /* Source badge - positioned in top right */
 .source-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border: none;
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	border: none;
+}
+
+/* Item controls (relevance + favorite) - positioned top-left */
+.item-controls {
+	position: absolute;
+	top: 12px;
+	left: 12px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.relevance-dot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	border: 2px solid var(--color-muted-contrast);
+	background: transparent;
+	cursor: pointer;
+}
+
+.relevance-dot.tier-0 {
+	border-color: var(--color-muted-contrast);
+}
+.relevance-dot.tier-1 {
+	background: #9ca3af;
+	border-color: #9ca3af;
+}
+.relevance-dot.tier-2 {
+	background: #a7f3d0;
+	border-color: #a7f3d0;
+}
+.relevance-dot.tier-3 {
+	background: #34d399;
+	border-color: #34d399;
+}
+.relevance-dot.tier-4 {
+	background: #059669;
+	border-color: #059669;
+}
+
+.favorite-button {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	font-size: 14px;
+	line-height: 1;
+	color: var(--color-muted-contrast);
+}
+
+.favorite-button.active {
+	color: #e11d48;
+}
+
+.relevance-menu {
+	position: absolute;
+	top: 24px;
+	left: 0;
+	background: var(--color-card);
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	border-radius: 6px;
+	padding: 6px;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+	z-index: 10;
+}
+
+.relevance-option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 180px;
+	padding: 6px 8px;
+	background: transparent;
+	border: none;
+	text-align: left;
+	cursor: pointer;
+	color: inherit;
+}
+
+.relevance-option:hover {
+	background: rgba(0, 0, 0, 0.05);
+}
+
+.relevance-option .dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	display: inline-block;
+}
+
+.relevance-option .dot.tier-1 {
+	background: #9ca3af;
+}
+.relevance-option .dot.tier-2 {
+	background: #a7f3d0;
+}
+.relevance-option .dot.tier-3 {
+	background: #34d399;
+}
+.relevance-option .dot.tier-4 {
+	background: #059669;
 }
 
 /* Source badge colors */
 .source-badge.hn {
-  background-color: #ff6600;
-  color: white;
+	background-color: #ff6600;
+	color: white;
 }
 
 .source-badge.bs {
-  background-color: #0ea5e9;
-  color: white;
+	background-color: #0ea5e9;
+	color: white;
 }
 
 .source-badge.default {
-  background-color: var(--color-muted-contrast);
-  color: var(--color-card);
+	background-color: var(--color-muted-contrast);
+	color: var(--color-card);
 }
 
 /* Item title */
 .item-title {
-  display: block;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: inherit;
-  text-decoration: none;
-  margin: 0 40px 8px 0; /* Right margin for badge space */
-  padding-right: 0;
+	display: block;
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.4;
+	color: inherit;
+	text-decoration: none;
+	margin: 0 40px 8px 28px; /* space for left controls and right badge */
+	padding-right: 0;
 }
 
 .item-title:hover {
-  color: #4aa3b8;
-  text-decoration: underline;
+	color: #4aa3b8;
+	text-decoration: underline;
 }
 
 /* URL domain display */
 .item-url {
-  display: block;
-  font-size: 13px;
-  color: var(--color-muted-contrast);
-  margin-bottom: 4px;
-  text-decoration: none;
+	display: block;
+	font-size: 13px;
+	color: var(--color-muted-contrast);
+	margin-bottom: 4px;
+	text-decoration: none;
 }
 
 .item-url:hover {
-  color: inherit;
+	color: inherit;
 }
 
 /* Date display */
 .item-date {
-  font-size: 13px;
-  color: var(--color-muted);
-  margin-bottom: 8px;
+	font-size: 13px;
+	color: var(--color-muted);
+	margin: 0 0 8px 28px;
 }
 
 /* Description/Summary - only shown for high relevance */
 .item-description {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--color-muted-contrast);
-  margin-top: 12px;
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--color-muted-contrast);
+	margin-top: 12px;
 }
 
 .item-description p {
-  margin: 0 0 8px 0;
+	margin: 0 0 8px 0;
 }
 
 .item-description p:last-child {
-  margin-bottom: 0;
+	margin-bottom: 0;
 }
 
 /* Compact layout for low relevance items */
 .timeline-item-card.low-relevance .item-title {
-  font-size: 14px;
-  margin-bottom: 4px;
+	font-size: 14px;
+	margin-bottom: 4px;
 }
 
 .timeline-item-card.low-relevance .item-date {
-  margin-bottom: 0;
+	margin-bottom: 0;
 }
 
 /* Hide description for low relevance items */
 .timeline-item-card.low-relevance .item-description {
-  display: none;
+	display: none;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .timeline-item-card {
-    padding: 12px;
-  }
-  
-  .source-badge {
-    top: 8px;
-    right: 8px;
-    padding: 2px 6px;
-    font-size: 10px;
-  }
-  
-  .item-title {
-    font-size: 15px;
-    margin-right: 35px;
-  }
-  
-  .timeline-item-card.low-relevance .item-title {
-    font-size: 13px;
-  }
+	.timeline-item-card {
+		padding: 12px;
+	}
+
+	.source-badge {
+		top: 8px;
+		right: 8px;
+		padding: 2px 6px;
+		font-size: 10px;
+	}
+
+	.item-title {
+		font-size: 15px;
+		margin-right: 35px;
+	}
+
+	.timeline-item-card.low-relevance .item-title {
+		font-size: 13px;
+	}
 }
 
 /* Focus states for accessibility */
 .item-title:focus {
-  outline: 2px solid #4aa3b8;
-  outline-offset: 2px;
-  border-radius: 2px;
+	outline: 2px solid #4aa3b8;
+	outline-offset: 2px;
+	border-radius: 2px;
 }
 
 .item-url:focus {
-  outline: 2px solid #4aa3b8;
-  outline-offset: 2px;
-  border-radius: 2px;
+	outline: 2px solid #4aa3b8;
+	outline-offset: 2px;
+	border-radius: 2px;
 }
