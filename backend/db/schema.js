@@ -13,6 +13,8 @@ function initializeDatabase() {
 				raw_content TEXT,
 				url TEXT,
 				highlight BOOLEAN DEFAULT 0,
+				is_favorite BOOLEAN DEFAULT 0,
+				favorited_at DATETIME,
 				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 				collected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 				UNIQUE(source_type, source_id)

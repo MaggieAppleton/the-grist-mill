@@ -3,7 +3,7 @@ const { db } = require("./connection");
 function getAllItems() {
 	return new Promise((resolve, reject) => {
 		const query = `
-		      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, created_at, collected_at
+		      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at, created_at, collected_at
 		      FROM content_items 
 		      ORDER BY created_at DESC
 		    `;
@@ -31,7 +31,7 @@ function getItemsFiltered({ source, limit = 50, offset = 0 } = {}) {
 			? `WHERE ${whereClauses.join(" AND ")}`
 			: "";
 		const query = `
-		      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, created_at, collected_at
+		      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at, created_at, collected_at
 		      FROM content_items
 		      ${whereSQL}
 		      ORDER BY created_at DESC
@@ -74,7 +74,7 @@ function searchItems({ query, source, limit = 50, offset = 0 } = {}) {
 
 		const whereSQL = `WHERE ${whereClauses.join(" AND ")}`;
 		const searchQuery = `
-				SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, created_at, collected_at
+				SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at, created_at, collected_at
 				FROM content_items
 				${whereSQL}
 				ORDER BY 

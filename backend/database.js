@@ -4,6 +4,7 @@ const aiUsage = require("./db/aiUsage");
 const research = require("./db/researchStatements");
 const contentFeatures = require("./db/contentFeatures");
 const userRatings = require("./db/userRatings");
+const favorites = require("./db/favorites");
 const { initializeDatabase: initializeDatabaseImpl } = require("./db/schema");
 
 // (removed legacy insertSampleData)
@@ -78,6 +79,9 @@ module.exports = {
 	// user ratings
 	upsertUserRating: userRatings.upsertUserRating,
 	getUserRatingStats: userRatings.getUserRatingStats,
+	// favorites
+	toggleFavorite: favorites.toggleFavorite,
+	getFavoriteItems: favorites.getFavoriteItems,
 	// helper: get item ids by source
 	getItemIdsBySource: items.getItemIdsBySource,
 };
