@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Heart } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { formatDateTime } from "../../utils/dates";
 import { getRelevanceScore, extractDomain } from "../../utils/items";
@@ -117,61 +118,11 @@ export default function TimelineItem({
 				onClick={onActivate}
 				className={`timeline-item-card ${
 					isHighRelevance ? "high-relevance" : "low-relevance"
-				} ${isActive ? "active" : ""}`}
+				}
+				${isActive ? "active" : ""}`}
 				tabIndex={0}
 				onFocus={onActivate}
 			>
-				{item.source_type && (
-					<span
-						className={`source-badge ${getSourceBadgeClass(item.source_type)}`}
-					>
-						{item.source_type === "hackernews"
-							? "HN"
-							: item.source_type === "bluesky"
-							? "BS"
-							: item.source_type.toUpperCase()}
-					</span>
-				)}
-
-				{/* Relevance + Favorite controls */}
-				<div className="item-controls" ref={menuRef}>
-					<button
-						className={`relevance-dot tier-${ratingTier || 0}`}
-						aria-haspopup="menu"
-						aria-expanded={menuOpen}
-						onClick={() => setMenuOpen(!menuOpen)}
-						title={ratingTier ? tierToLabel[ratingTier] : "Rate relevance"}
-					/>
-					<button
-						className={`favorite-button ${isFavorite ? "active" : ""}`}
-						aria-pressed={isFavorite}
-						onClick={handleToggleFavorite}
-						title={isFavorite ? "Unfavorite" : "Favorite"}
-					>
-						{isFavorite ? "♥" : "♡"}
-					</button>
-
-					{menuOpen && (
-						<div className="relevance-menu" role="menu">
-							{[4, 3, 2, 1].map((tier) => (
-								<button
-									key={tier}
-									className={`relevance-option tier-${tier}`}
-									role="menuitemradio"
-									aria-checked={ratingTier === tier}
-									onClick={() => {
-										setMenuOpen(false);
-										handleRate(tier);
-									}}
-								>
-									<span className={`dot tier-${tier}`} aria-hidden />{" "}
-									{tierToLabel[tier]}
-								</button>
-							))}
-						</div>
-					)}
-				</div>
-
 				{item.title && (
 					<a
 						className="item-title"
@@ -185,8 +136,6 @@ export default function TimelineItem({
 
 				{domain && <div className="item-url">{domain}</div>}
 
-				<div className="item-date">{formatDateTime(item.created_at)}</div>
-
 				{isHighRelevance && item.summary && (
 					<div className="item-description">
 						<ReactMarkdown
@@ -198,6 +147,73 @@ export default function TimelineItem({
 						</ReactMarkdown>
 					</div>
 				)}
+
+				{/* Footer: badge and date on left, controls on right */}
+				<div className="item-footer">
+					<div className="footer-left">
+						{item.source_type && (
+							<span
+								className={`source-badge ${getSourceBadgeClass(
+									item.source_type
+								)}`}
+							>
+								{item.source_type === "hackernews"
+									? "HN"
+									: item.source_type === "bluesky"
+									? "BS"
+									: item.source_type.toUpperCase()}
+							</span>
+						)}
+						<div className="item-date">{formatDateTime(item.created_at)}</div>
+					</div>
+					<div className="footer-controls" ref={menuRef}>
+						<button
+							className="relevance-button"
+							aria-haspopup="menu"
+							aria-expanded={menuOpen}
+							onClick={() => setMenuOpen(!menuOpen)}
+							title={ratingTier ? tierToLabel[ratingTier] : "Rate relevance"}
+						>
+							<span
+								className={`relevance-dot tier-${ratingTier || 0}`}
+								aria-hidden
+							/>
+						</button>
+						<button
+							className={`favorite-button ${isFavorite ? "active" : ""}`}
+							aria-pressed={isFavorite}
+							onClick={handleToggleFavorite}
+							title={isFavorite ? "Unfavorite" : "Favorite"}
+						>
+							<Heart
+								size={18}
+								strokeWidth={2}
+								fill={isFavorite ? "#e11d48" : "transparent"}
+								color={isFavorite ? "#e11d48" : "currentColor"}
+							/>
+						</button>
+
+						{menuOpen && (
+							<div className="relevance-menu" role="menu">
+								{[4, 3, 2, 1].map((tier) => (
+									<button
+										key={tier}
+										className={`relevance-option tier-${tier}`}
+										role="menuitemradio"
+										aria-checked={ratingTier === tier}
+										onClick={() => {
+											setMenuOpen(false);
+											handleRate(tier);
+										}}
+									>
+										<span className={`dot tier-${tier}`} aria-hidden />{" "}
+										{tierToLabel[tier]}
+									</button>
+								))}
+							</div>
+						)}
+					</div>
+				</div>
 			</div>
 		</li>
 	);
