@@ -6,7 +6,12 @@ import { markdownPlugins, markdownComponents } from "../../utils/markdown";
 import { rateItem, toggleFavorite } from "../../services/api";
 import "./TimelineItem.css";
 
-export default function TimelineItem({ item, activeResearchStatementId }) {
+export default function TimelineItem({
+	item,
+	activeResearchStatementId,
+	isActive = false,
+	onActivate,
+}) {
 	const relevance = getRelevanceScore(item);
 	const isHighRelevance =
 		item.highlight || (typeof relevance === "number" && relevance >= 7);
@@ -44,7 +49,7 @@ export default function TimelineItem({ item, activeResearchStatementId }) {
 					research_statement_id: activeResearchStatementId,
 					rating: tier,
 				});
-			} catch (e) {
+			} catch {
 				// Revert on error
 				setRatingTier((prev) => prev);
 			}
@@ -64,13 +69,14 @@ export default function TimelineItem({ item, activeResearchStatementId }) {
 			if (next && activeResearchStatementId) {
 				setRatingTier(4);
 			}
-		} catch (e) {
+		} catch {
 			setIsFavorite(!next);
 		}
 	}, [isFavorite, item?.id, activeResearchStatementId]);
 
-	// Keyboard shortcuts: 1-4 to rate, f to favorite
+	// Keyboard shortcuts: only when this item is active
 	useEffect(() => {
+		if (!isActive) return;
 		function onKeyDown(e) {
 			if (
 				e.target &&
@@ -90,7 +96,7 @@ export default function TimelineItem({ item, activeResearchStatementId }) {
 		}
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [handleRate, handleToggleFavorite]);
+	}, [isActive, handleRate, handleToggleFavorite]);
 
 	// Close menu on outside click
 	useEffect(() => {
@@ -107,9 +113,13 @@ export default function TimelineItem({ item, activeResearchStatementId }) {
 	return (
 		<li className="timeline-item">
 			<div
+				onMouseEnter={onActivate}
+				onClick={onActivate}
 				className={`timeline-item-card ${
 					isHighRelevance ? "high-relevance" : "low-relevance"
-				}`}
+				} ${isActive ? "active" : ""}`}
+				tabIndex={0}
+				onFocus={onActivate}
 			>
 				{item.source_type && (
 					<span

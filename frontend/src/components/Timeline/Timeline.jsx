@@ -4,6 +4,7 @@ import "./Timeline.css";
 
 export default function Timeline({ items, activeResearchStatementId }) {
 	const [currentDayOffset, setCurrentDayOffset] = useState(0);
+	const [activeItemId, setActiveItemId] = useState(null);
 
 	// Group items by day
 	const dayGroups = useMemo(() => {
@@ -58,6 +59,8 @@ export default function Timeline({ items, activeResearchStatementId }) {
 										key={item.id}
 										item={item}
 										activeResearchStatementId={activeResearchStatementId}
+										isActive={activeItemId === item.id}
+										onActivate={() => setActiveItemId(item.id)}
 									/>
 								))}
 							</ul>
