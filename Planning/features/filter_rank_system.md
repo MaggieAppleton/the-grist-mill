@@ -234,11 +234,11 @@ Follow-up:
 
 #### Task 8C.1b: Favorites API Endpoints
 
-- [ ] POST /api/favorites/toggle to heart/unheart an item
-- [ ] Toggling favorite to true must also persist rating=4 for the active research statement
-- [ ] GET /api/favorites?only=true to list favorited items (optional convenience)
+- [x] POST /api/favorites/toggle to heart/unheart an item
+- [x] Toggling favorite to true must also persist rating=4 for the active research statement
+- [x] GET /api/favorites?only=true to list favorited items (optional convenience)
 
-**Commit**: "Add favorites (heart) API endpoints"
+**Commit**: "Add favorites (heart) API endpoints" ✅ COMPLETED (September 12, 2025)
 
 #### Task 8C.2: Frontend Rating Interface
 
