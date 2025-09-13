@@ -242,12 +242,12 @@ Follow-up:
 
 #### Task 8C.2: Frontend Rating Interface
 
-- [ ] Relevance dot control on each content item
-- [ ] Dropdown menu with 4 options (Not, Weakly, Relevant, Very Relevant)
-- [ ] Keyboard shortcuts (1-4 keys) for rating tiers
-- [ ] Visual feedback for rated items
+- [x] Relevance dot control on each content item
+- [x] Dropdown menu with 4 options (Not, Weakly, Relevant, Very Relevant)
+- [x] Keyboard shortcuts (1-4 keys) for rating tiers
+- [x] Visual feedback for rated items
 
-**Commit**: "Add user rating interface with relevance dot and keyboard shortcuts"
+**Commit**: "Add user rating interface with relevance dot and keyboard shortcuts" ✅ COMPLETED (September 13, 2025)
 
 #### Task 8C.2b: Favorites UI
 
@@ -256,14 +256,6 @@ Follow-up:
 - [ ] Filter switch on dashboard to show only favorites
 
 **Commit**: "Add favorites UI and dashboard filter"
-
-#### Task 8C.3: Rating History and Analytics
-
-- [ ] Show user's rating history in settings
-- [ ] Basic analytics on rating patterns
-- [ ] Export ratings data functionality
-
-**Commit**: "Add rating history and analytics"
 
 ---
 
