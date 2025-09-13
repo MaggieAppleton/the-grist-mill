@@ -125,6 +125,9 @@ export default function HeaderBar({
 	onOpenSettings,
 	searchResults,
 	searchError,
+	topics = [],
+	activeStatementId,
+	onChangeStatement,
 }) {
 	const isShowingSearchResults = !!searchResults;
 	return (
@@ -136,6 +139,25 @@ export default function HeaderBar({
 					isLoading={isSearching}
 					currentQuery={currentQuery}
 				/>
+				{Array.isArray(topics) && topics.length > 0 && (
+					<div className="statement-selector">
+						<label className="selector-label" htmlFor="statement-select">
+							Topic
+						</label>
+						<select
+							id="statement-select"
+							className="selector-control"
+							value={activeStatementId || ""}
+							onChange={(e) => onChangeStatement?.(Number(e.target.value))}
+						>
+							{topics.map((t) => (
+								<option key={t.id} value={t.id}>
+									{t.name}
+								</option>
+							))}
+						</select>
+					</div>
+				)}
 				{isShowingSearchResults && searchResults && (
 					<div className="search-status">
 						<span className="search-results-info">

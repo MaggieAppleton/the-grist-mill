@@ -9,7 +9,7 @@ export default function Timeline({ items, activeResearchStatementId }) {
 	const [columnsPerView, setColumnsPerView] = useState(3);
 	const daysRef = useRef(null);
 
-	const MIN_COL_WIDTH = 350; // px
+	const MIN_COL_WIDTH = 400; // px
 
 	// Group items by day
 	const dayGroups = useMemo(() => {

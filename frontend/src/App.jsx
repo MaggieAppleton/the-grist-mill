@@ -1,5 +1,5 @@
 import "./App.css";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchUsage } from "./services/api";
 import SettingsModal from "./components/modals/SettingsModal";
 import UsageModal from "./components/modals/UsageModal";
@@ -12,11 +12,57 @@ import useSettings from "./hooks/useSettings";
 import useResearchStatements from "./hooks/useResearchStatements";
 
 function Dashboard() {
-	// Load research statements and pick active one (fallback to first)
+	// Load research statements
 	const { topics } = useResearchStatements({ autoLoad: true });
-	const activeResearchStatementId = Array.isArray(topics)
-		? (topics.find((t) => t.is_active) || topics[0])?.id
-		: undefined;
+
+	// Determine initial active statement from URL or localStorage
+	function getInitialStatementId() {
+		try {
+			const url = new URL(window.location.href);
+			const fromUrl = url.searchParams.get("statement");
+			if (fromUrl) return Number(fromUrl);
+			const stored = window.localStorage.getItem("activeStatementId");
+			return stored ? Number(stored) : undefined;
+		} catch (_) {
+			return undefined;
+		}
+	}
+
+	const [activeStatementId, setActiveStatementId] = useState(
+		getInitialStatementId()
+	);
+
+	// Ensure selection is valid once topics load
+	useEffect(() => {
+		if (!Array.isArray(topics) || topics.length === 0) return;
+		const ids = topics.map((t) => t.id);
+		if (!activeStatementId || !ids.includes(activeStatementId)) {
+			const fallback = (topics.find((t) => t.is_active) || topics[0])?.id;
+			if (fallback) setActiveStatementId(fallback);
+		}
+	}, [topics]);
+
+	// Sync URL and localStorage when selection changes
+	useEffect(() => {
+		if (!activeStatementId) return;
+		try {
+			const url = new URL(window.location.href);
+			url.searchParams.set("statement", String(activeStatementId));
+			window.history.replaceState(
+				{},
+				"",
+				`${url.pathname}?${url.searchParams.toString()}`
+			);
+			window.localStorage.setItem(
+				"activeStatementId",
+				String(activeStatementId)
+			);
+		} catch (_) {
+			// no-op
+		}
+	}, [activeStatementId]);
+
+	const activeResearchStatementId = activeStatementId;
 
 	const { items, loading, error, isRefreshing, retry, refresh } = useFeed({
 		initialLimit: 200,
@@ -119,6 +165,9 @@ function Dashboard() {
 				onOpenSettings={openSettingsModal}
 				searchResults={searchResults}
 				searchError={searchError}
+				topics={topics || []}
+				activeStatementId={activeStatementId}
+				onChangeStatement={setActiveStatementId}
 			/>
 
 			{/* Removed dashboard-level refreshing message; indicator now inline in header */}

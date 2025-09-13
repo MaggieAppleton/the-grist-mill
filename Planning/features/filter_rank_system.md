@@ -297,23 +297,14 @@ Follow-up:
 
 #### Task 8E.1: Statement Selection Interface
 
-- [ ] Dropdown/tabs for selecting active research statement
-- [ ] Show content filtered by selected statement
-- [ ] Update URLs to include statement parameter
-- [ ] Remember user's last selected statement
+- [x] Dropdown/tabs for selecting active research statement
+- [x] Show content filtered by selected statement
+- [x] Update URLs to include statement parameter
+- [x] Remember user's last selected statement
 
-**Commit**: "Add multi-statement dashboard filtering"
+**Commit**: "Add multi-statement dashboard filtering" ✅ COMPLETED (September 13, 2025)
 
-#### Task 8E.2: Statement-Specific Analytics
-
-- [ ] Show ranking performance per research statement
-- [ ] Content distribution charts by relevance tier
-- [ ] Feedback coverage statistics
-- [ ] Cost tracking per statement
-
-**Commit**: "Add per-statement analytics and reporting"
-
-#### Task 8E.3: Batch Re-ranking
+#### Task 8E.2: Batch Re-ranking
 
 - [ ] Re-calculate scores when research statements change
 - [ ] Background job for re-ranking existing content
