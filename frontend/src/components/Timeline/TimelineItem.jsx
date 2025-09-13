@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { formatDateTime } from "../../utils/dates";
 import { getRelevanceScore, extractDomain } from "../../utils/items";
 import { markdownPlugins, markdownComponents } from "../../utils/markdown";
 import { rateItem, toggleFavorite } from "../../services/api";
@@ -164,7 +163,6 @@ export default function TimelineItem({
 									: item.source_type.toUpperCase()}
 							</span>
 						)}
-						<div className="item-date">{formatDateTime(item.created_at)}</div>
 					</div>
 					<div className="footer-controls" ref={menuRef}>
 						<button
