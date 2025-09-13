@@ -133,10 +133,103 @@ function updateContentFeaturesSimilarityAndTier(
 	});
 }
 
+// Get rated items with their embeddings for feedback-based scoring
+function getRatedItemsWithEmbeddings(researchStatementId, { limit = 500 } = {}) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+				SELECT 
+					ur.content_item_id,
+					ur.research_statement_id,
+					ur.rating,
+					cf.content_embedding
+				FROM user_ratings ur
+				JOIN content_features cf 
+					ON cf.content_item_id = ur.content_item_id 
+					AND cf.research_statement_id = ur.research_statement_id
+				WHERE ur.research_statement_id = ?
+				  AND cf.content_embedding IS NOT NULL
+				ORDER BY ur.created_at DESC
+				LIMIT ?
+			`;
+		db.all(
+			sql,
+			[Number(researchStatementId), Math.max(1, Number(limit) || 500)],
+			(err, rows) => {
+				if (err) return reject(err);
+				resolve(rows || []);
+			}
+		);
+	});
+}
+
+// Get items that need feedback scores computed (have embeddings but no feedback score)
+function getItemsMissingFeedbackScoreForStatement(
+	researchStatementId,
+	{ limit = 100 } = {}
+) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+				SELECT 
+					cf.content_item_id,
+					cf.research_statement_id,
+					cf.content_embedding
+				FROM content_features cf
+				LEFT JOIN user_ratings ur 
+					ON ur.content_item_id = cf.content_item_id 
+					AND ur.research_statement_id = cf.research_statement_id
+				WHERE cf.research_statement_id = ?
+				  AND cf.content_embedding IS NOT NULL
+				  AND ur.id IS NULL
+				  AND (cf.feedback_score IS NULL)
+				ORDER BY cf.updated_at ASC
+				LIMIT ?
+			`;
+		db.all(
+			sql,
+			[Number(researchStatementId), Math.max(1, Number(limit) || 100)],
+			(err, rows) => {
+				if (err) return reject(err);
+				resolve(rows || []);
+			}
+		);
+	});
+}
+
+// Update feedback score in content_features
+function updateContentFeaturesFeedbackScore(
+	contentItemId,
+	researchStatementId,
+	feedbackScore
+) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+				UPDATE content_features
+				SET feedback_score = ?,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE content_item_id = ? AND research_statement_id = ?
+			`;
+		db.run(
+			sql,
+			[
+				Number(feedbackScore) || 0,
+				Number(contentItemId),
+				Number(researchStatementId),
+			],
+			function (err) {
+				if (err) return reject(err);
+				resolve(this.changes);
+			}
+		);
+	});
+}
+
 module.exports = {
 	getActiveResearchStatements,
 	getItemsMissingEmbeddingForStatement,
 	upsertContentFeaturesEmbedding,
 	getItemsMissingSimilarityForStatement,
 	updateContentFeaturesSimilarityAndTier,
+	getRatedItemsWithEmbeddings,
+	getItemsMissingFeedbackScoreForStatement,
+	updateContentFeaturesFeedbackScore,
 };

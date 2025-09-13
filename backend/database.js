@@ -77,6 +77,12 @@ module.exports = {
 		contentFeatures.getItemsMissingSimilarityForStatement,
 	updateContentFeaturesSimilarityAndTier:
 		contentFeatures.updateContentFeaturesSimilarityAndTier,
+	// feedback scoring
+	getRatedItemsWithEmbeddings: contentFeatures.getRatedItemsWithEmbeddings,
+	getItemsMissingFeedbackScoreForStatement:
+		contentFeatures.getItemsMissingFeedbackScoreForStatement,
+	updateContentFeaturesFeedbackScore:
+		contentFeatures.updateContentFeaturesFeedbackScore,
 	// user ratings
 	upsertUserRating: userRatings.upsertUserRating,
 	getUserRatingStats: userRatings.getUserRatingStats,
