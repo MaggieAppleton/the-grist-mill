@@ -1,3 +1,45 @@
+.cumulative-cost-box {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	padding: 20px;
+	border-radius: 8px;
+	margin-bottom: 24px;
+	text-align: center;
+}
+
+.cumulative-cost-box h3 {
+	margin: 0 0 8px 0;
+	font-size: 16px;
+	font-weight: 600;
+	opacity: 0.9;
+}
+
+.cost-amount {
+	font-size: 24px;
+	font-weight: bold;
+	margin-bottom: 8px;
+}
+
+.cost-details {
+	font-size: 13px;
+	opacity: 0.8;
+}
+
+.chart-container {
+	background: #f8f9fa;
+	border-radius: 8px;
+	padding: 16px;
+	margin-bottom: 16px;
+}
+
+.no-data-message {
+	text-align: center;
+	color: #6b7280;
+	font-style: italic;
+	padding: 40px;
+}
+
+/* Legacy table styles (keeping for now but may remove) */
 .usage-table {
 	width: 100%;
 	border-collapse: collapse;

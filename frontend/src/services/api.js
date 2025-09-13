@@ -14,8 +14,14 @@ export async function fetchItems({ limit, offset, source } = {}) {
 	return res.json();
 }
 
-export async function fetchUsage() {
-	const res = await fetch("/api/usage");
+export async function fetchUsage(days = 30) {
+	const params = new URLSearchParams();
+	if (days != null) params.set("days", String(days));
+	
+	const url = params.toString() 
+		? `/api/usage?${params.toString()}`
+		: "/api/usage";
+	const res = await fetch(url);
 	if (!res.ok) {
 		throw new Error(`Failed to fetch usage: ${res.status}`);
 	}

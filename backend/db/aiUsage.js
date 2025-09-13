@@ -29,6 +29,24 @@ function getTodayAiUsage() {
 	return getAiUsageForDate(today);
 }
 
+function getHistoricalAiUsage(days = 30) {
+	return new Promise((resolve, reject) => {
+		const query = `
+		      SELECT date, tokens_used, estimated_cost, requests_count
+		      FROM ai_usage
+		      WHERE date >= date('now', '-' || ? || ' days')
+		      ORDER BY date DESC
+		    `;
+		db.all(query, [days], (err, rows) => {
+			if (err) {
+				console.error("Error fetching historical ai_usage:", err.message);
+				return reject(err);
+			}
+			resolve(rows || []);
+		});
+	});
+}
+
 function incrementAiUsage({
 	tokensUsed = 0,
 	estimatedCost = 0,
@@ -66,5 +84,6 @@ function incrementAiUsage({
 module.exports = {
 	getAiUsageForDate,
 	getTodayAiUsage,
+	getHistoricalAiUsage,
 	incrementAiUsage,
 };
