@@ -49,12 +49,27 @@ function UsageChart({ data, width = 800, height = 400 }) {
 			.attr("class", "bar")
 			.attr("x", d => xScale(d.date))
 			.attr("width", xScale.bandwidth())
-			.attr("y", d => yScale(Number(d.estimated_cost)))
-			.attr("height", d => innerHeight - yScale(Number(d.estimated_cost)))
-			.attr("fill", d => Number(d.estimated_cost) >= d.daily_budget_usd ? "#ff6b6b" : "#4ecdc4")
+			.attr("y", d => {
+				const cost = Number(d.estimated_cost);
+				return cost === 0 ? innerHeight - 2 : yScale(cost);  // Minimum 2px height for zero values
+			})
+			.attr("height", d => {
+				const cost = Number(d.estimated_cost);
+				return cost === 0 ? 2 : innerHeight - yScale(cost);  // Minimum 2px height for zero values
+			})
+			.attr("fill", d => {
+				const cost = Number(d.estimated_cost);
+				if (cost === 0) return "#e9ecef";  // Light gray for zero values
+				return cost >= d.daily_budget_usd ? "#ff6b6b" : "#4ecdc4";
+			})
 			.on("mouseover", function(event, d) {
 				// Highlight bar
-				d3.select(this).attr("fill", d => Number(d.estimated_cost) >= d.daily_budget_usd ? "#ff5252" : "#26c6da");
+				const cost = Number(d.estimated_cost);
+				let hoverColor;
+				if (cost === 0) hoverColor = "#ced4da";  // Slightly darker gray for zero values
+				else if (cost >= d.daily_budget_usd) hoverColor = "#ff5252";
+				else hoverColor = "#26c6da";
+				d3.select(this).attr("fill", hoverColor);
 				
 				// Show tooltip
 				tooltip.transition()
@@ -73,7 +88,12 @@ function UsageChart({ data, width = 800, height = 400 }) {
 			})
 			.on("mouseout", function(event, d) {
 				// Reset bar color
-				d3.select(this).attr("fill", d => Number(d.estimated_cost) >= d.daily_budget_usd ? "#ff6b6b" : "#4ecdc4");
+				const cost = Number(d.estimated_cost);
+				let originalColor;
+				if (cost === 0) originalColor = "#e9ecef";
+				else if (cost >= d.daily_budget_usd) originalColor = "#ff6b6b";
+				else originalColor = "#4ecdc4";
+				d3.select(this).attr("fill", originalColor);
 				
 				// Hide tooltip
 				tooltip.transition()

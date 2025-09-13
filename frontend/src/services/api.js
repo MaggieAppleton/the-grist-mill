@@ -14,7 +14,7 @@ export async function fetchItems({ limit, offset, source } = {}) {
 	return res.json();
 }
 
-export async function fetchUsage(days = 30) {
+export async function fetchUsage(days = 14) {
 	const params = new URLSearchParams();
 	if (days != null) params.set("days", String(days));
 	

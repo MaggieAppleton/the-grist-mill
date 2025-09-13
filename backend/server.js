@@ -155,7 +155,7 @@ app.get("/api/search", generalLimiter, async (req, res) => {
 // AI usage and budget endpoint
 app.get("/api/usage", generalLimiter, async (req, res) => {
 	try {
-		const days = parseInt(req.query.days) || 30;
+		const days = parseInt(req.query.days) || 14;
 		const historicalData = await getHistoricalAiUsage(days);
 		
 		const dailyBudgetUSD = Number(process.env.AI_DAILY_BUDGET_USD || 1.0);
