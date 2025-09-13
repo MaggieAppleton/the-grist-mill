@@ -3,14 +3,16 @@
 	width: 100%;
 	min-height: 100vh;
 	padding: 0 60px; /* Space for navigation on both sides */
-	overflow: hidden; /* ensure extra columns are not visible */
+	overflow-x: hidden; /* ensure extra columns are not visible */
+	overflow-y: auto; /* allow vertical scrolling */
 }
 
 .timeline-days {
 	display: flex;
 	height: auto;
 	gap: 32px;
-	overflow: hidden; /* prevent wrapping/scrolling; use nav to view more */
+	overflow-x: hidden; /* prevent horizontal wrapping/scrolling; use nav to view more */
+	overflow-y: visible; /* allow vertical content to flow */
 	flex-wrap: nowrap; /* keep columns on one row */
 }
 
