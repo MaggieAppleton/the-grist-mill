@@ -273,12 +273,12 @@ Follow-up:
 
 #### Task 8D.1: Similarity-Based Feedback Scoring
 
-- [ ] Find similar content items (by embeddings) that user has rated
-- [ ] Weight feedback based on similarity distance
-- [ ] Compute feedback score for unrated items
-- [ ] Store feedback scores in content_features table
+- [x] Find similar content items (by embeddings) that user has rated
+- [x] Weight feedback based on similarity distance
+- [x] Compute feedback score for unrated items
+- [x] Store feedback scores in content_features table
 
-**Commit**: "Add feedback-based scoring using content similarity"
+**Commit**: "Add feedback-based scoring using content similarity" ✅ COMPLETED (September 13, 2025)
 
 #### Task 8D.2: Hybrid Score Calculation
 
