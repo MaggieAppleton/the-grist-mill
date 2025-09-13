@@ -1,10 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import TimelineItem from "./TimelineItem";
 import "./Timeline.css";
+import { formatDateTime } from "../../utils/dates";
 
 export default function Timeline({ items, activeResearchStatementId }) {
 	const [currentDayOffset, setCurrentDayOffset] = useState(0);
 	const [activeItemId, setActiveItemId] = useState(null);
+	const [columnsPerView, setColumnsPerView] = useState(3);
+	const daysRef = useRef(null);
+
+	const MIN_COL_WIDTH = 350; // px
 
 	// Group items by day
 	const dayGroups = useMemo(() => {
@@ -32,12 +37,15 @@ export default function Timeline({ items, activeResearchStatementId }) {
 
 	if (dayGroups.length === 0) return null;
 
-	// Get current 3-day window
-	const visibleDays = dayGroups.slice(currentDayOffset, currentDayOffset + 3);
+	// Determine visible window based on columnsPerView
+	const visibleDays = dayGroups.slice(
+		currentDayOffset,
+		currentDayOffset + columnsPerView
+	);
 
 	// Navigation handlers
 	const canGoBack = currentDayOffset > 0;
-	const canGoForward = currentDayOffset + 3 < dayGroups.length;
+	const canGoForward = currentDayOffset + columnsPerView < dayGroups.length;
 
 	const goBack = () => {
 		if (canGoBack) setCurrentDayOffset(currentDayOffset - 1);
@@ -47,11 +55,63 @@ export default function Timeline({ items, activeResearchStatementId }) {
 		if (canGoForward) setCurrentDayOffset(currentDayOffset + 1);
 	};
 
+	// Update columnsPerView responsively based on container width
+	useEffect(() => {
+		const element = daysRef.current;
+		if (!element) return;
+
+		const computeColumnsPerView = () => {
+			const width = element.clientWidth;
+			const styles = getComputedStyle(element);
+			const gapValue = styles.gap || styles.columnGap || "0px";
+			const gap = parseFloat(gapValue) || 0;
+
+			// Compute how many 350px columns fit given the current gap
+			const maxColumns = 3;
+			const columns = Math.floor((width + gap - 0.5) / (MIN_COL_WIDTH + gap));
+			return Math.max(1, Math.min(maxColumns, columns));
+		};
+
+		const handleMeasure = () => {
+			const next = computeColumnsPerView();
+			setColumnsPerView((prev) => (prev !== next ? next : prev));
+		};
+
+		const ro = new ResizeObserver(handleMeasure);
+		ro.observe(element);
+
+		// Also listen to window resize for robustness
+		window.addEventListener("resize", handleMeasure);
+
+		// Initial measurement
+		handleMeasure();
+
+		return () => {
+			ro.disconnect();
+			window.removeEventListener("resize", handleMeasure);
+		};
+		// Re-run when day groups mount/change so the ref exists and size may differ
+	}, [dayGroups.length]);
+
+	// Keep offset within bounds when columnsPerView or dayGroups change
+	useEffect(() => {
+		if (dayGroups.length === 0) return;
+		const maxStart = Math.max(0, dayGroups.length - columnsPerView);
+		if (currentDayOffset > maxStart) {
+			setCurrentDayOffset(maxStart);
+		}
+	}, [columnsPerView, dayGroups.length]);
+
 	return (
 		<div className="timeline-container">
-			<div className="timeline-days">
+			<div className="timeline-days" ref={daysRef}>
 				{visibleDays.map((dayGroup) => (
 					<div key={dayGroup.date} className="timeline-day-column">
+						<div className="timeline-day-header">
+							<div className="timeline-day-date">
+								{formatDateTime(dayGroup.date)}
+							</div>
+						</div>
 						<div className="timeline-day-items">
 							<ul className="timeline">
 								{dayGroup.items.map((item) => (
@@ -69,7 +129,7 @@ export default function Timeline({ items, activeResearchStatementId }) {
 				))}
 			</div>
 
-			{dayGroups.length > 3 && (
+			{dayGroups.length > columnsPerView && (
 				<>
 					<button
 						className={`nav-button nav-back ${!canGoBack ? "disabled" : ""}`}

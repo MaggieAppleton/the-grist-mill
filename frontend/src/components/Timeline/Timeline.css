@@ -3,26 +3,35 @@
 	width: 100%;
 	min-height: 100vh;
 	padding: 0 60px; /* Space for navigation on both sides */
+	overflow: hidden; /* ensure extra columns are not visible */
 }
 
 .timeline-days {
 	display: flex;
 	height: auto;
 	gap: 32px;
+	overflow: hidden; /* prevent wrapping/scrolling; use nav to view more */
+	flex-wrap: nowrap; /* keep columns on one row */
 }
 
 .timeline-day-column {
-	flex: 1;
+	flex: 1 1 350px; /* min 350px, but grow to fill available space */
 	display: flex;
 	flex-direction: column;
 	height: auto;
-	min-width: 0; /* Allow flex shrinking */
+	min-width: 350px; /* do not shrink below 350px */
 }
 
 .timeline-day-header {
 	padding: 16px 8px 12px 8px;
-	border-bottom: 2px solid var(--color-border);
 	background-color: var(--color-bg);
+}
+
+.timeline-day-date {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--color-muted);
+	text-align: left;
 }
 
 .timeline-day-header h3 {
