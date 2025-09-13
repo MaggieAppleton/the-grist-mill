@@ -11,6 +11,7 @@ const {
 	searchItems,
 	insertContentItems,
 	getTodayAiUsage,
+	getHistoricalAiUsage,
 	// research statement helpers
 	getAllResearchStatements,
 	getResearchStatementById,
@@ -154,24 +155,29 @@ app.get("/api/search", generalLimiter, async (req, res) => {
 // AI usage and budget endpoint
 app.get("/api/usage", generalLimiter, async (req, res) => {
 	try {
-		const usage = (await getTodayAiUsage()) || {
-			tokens_used: 0,
-			estimated_cost: 0,
-			requests_count: 0,
-		};
-		const date = new Date().toISOString().slice(0, 10);
+		const days = parseInt(req.query.days) || 14;
+		const historicalData = await getHistoricalAiUsage(days);
+		
 		const dailyBudgetUSD = Number(process.env.AI_DAILY_BUDGET_USD || 1.0);
 		const costPer1K = Number(process.env.AI_COST_PER_1K_TOKENS_USD || 0.00015);
-		const remaining = Math.max(
-			0,
-			dailyBudgetUSD - Number(usage.estimated_cost || 0)
-		);
-		res.json({
-			date,
-			...usage,
+		
+		// Calculate cumulative cost
+		const cumulativeCost = historicalData.reduce((sum, day) => {
+			return sum + Number(day.estimated_cost || 0);
+		}, 0);
+		
+		// Add budget info to each day
+		const dataWithBudget = historicalData.map(day => ({
+			...day,
 			daily_budget_usd: dailyBudgetUSD,
-			remaining_budget_usd: remaining,
-			exceeded: Number(usage.estimated_cost || 0) >= dailyBudgetUSD,
+			remaining_budget_usd: Math.max(0, dailyBudgetUSD - Number(day.estimated_cost || 0)),
+			exceeded: Number(day.estimated_cost || 0) >= dailyBudgetUSD,
+		}));
+		
+		res.json({
+			historical_data: dataWithBudget,
+			cumulative_cost: cumulativeCost,
+			daily_budget_usd: dailyBudgetUSD,
 			cost_per_1k_tokens_usd: costPer1K,
 		});
 	} catch (error) {

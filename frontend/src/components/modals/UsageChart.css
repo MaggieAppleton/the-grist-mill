@@ -1,0 +1,71 @@
+.usage-chart-container {
+	position: relative;
+	width: 100%;
+	overflow: visible; /* Allow tooltips to extend beyond chart bounds */
+}
+
+.chart-tooltip {
+	position: absolute;
+	text-align: left;
+	padding: 10px 12px;
+	font-size: 12px;
+	background: white;
+	color: #333;
+	border-radius: 6px;
+	pointer-events: none;
+	opacity: 0;
+	z-index: 1000;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	border: 1px solid #e5e7eb;
+	transition: opacity 0.2s ease;
+	max-width: 200px;
+	min-width: 160px;
+}
+
+.tooltip-content {
+	line-height: 1.5;
+}
+
+.tooltip-content > div {
+	margin-bottom: 2px;
+}
+
+.tooltip-content > div:last-child {
+	margin-bottom: 0;
+}
+
+.tooltip-content span {
+	margin-right: 6px;
+}
+
+.usage-chart-container .bar {
+	transition: fill 0.2s ease;
+}
+
+.usage-chart-container .bar:hover {
+	cursor: pointer;
+}
+
+.usage-chart-container .x-axis text {
+	font-size: 11px;
+	fill: #666;
+}
+
+.usage-chart-container .y-axis text {
+	font-size: 11px;
+	fill: #666;
+}
+
+.usage-chart-container .x-axis path,
+.usage-chart-container .y-axis path {
+	stroke: #ddd;
+}
+
+.usage-chart-container .x-axis line,
+.usage-chart-container .y-axis line {
+	stroke: #ddd;
+}
+
+.budget-line {
+	opacity: 0.8;
+}

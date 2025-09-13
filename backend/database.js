@@ -58,6 +58,7 @@ module.exports = {
 	closeDatabase,
 	getAiUsageForDate: aiUsage.getAiUsageForDate,
 	getTodayAiUsage: aiUsage.getTodayAiUsage,
+	getHistoricalAiUsage: aiUsage.getHistoricalAiUsage,
 	incrementAiUsage: aiUsage.incrementAiUsage,
 	// research statements
 	getAllResearchStatements: research.getAllResearchStatements,

@@ -1,3 +1,54 @@
+.cumulative-cost-box {
+	background: #f8f9fa;
+	border: 1px solid #e9ecef;
+	color: #495057;
+	padding: 20px;
+	border-radius: 8px;
+	margin-bottom: 24px;
+	text-align: center;
+}
+
+.cumulative-cost-box h3 {
+	margin: 0 0 8px 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: #6c757d;
+}
+
+.cost-amount {
+	font-size: 24px;
+	font-weight: bold;
+	margin-bottom: 8px;
+}
+
+.cost-details {
+	font-size: 13px;
+	color: #6c757d;
+}
+
+/* Usage modal specific overrides for larger chart */
+.modal-backdrop:has(.usage-modal) .modal {
+	max-width: 1100px; /* Accommodate 1000px chart + padding */
+	width: 95%;
+}
+
+.chart-container {
+	background: #f8f9fa;
+	border-radius: 8px;
+	padding: 16px;
+	margin-bottom: 16px;
+	overflow-x: auto; /* Allow horizontal scrolling if needed */
+	overflow-y: visible; /* Allow tooltips to extend vertically */
+}
+
+.no-data-message {
+	text-align: center;
+	color: #6b7280;
+	font-style: italic;
+	padding: 40px;
+}
+
+/* Legacy table styles (keeping for now but may remove) */
 .usage-table {
 	width: 100%;
 	border-collapse: collapse;
