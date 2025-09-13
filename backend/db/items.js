@@ -47,6 +47,7 @@ function getItemsFiltered({
 	sort,
 	min_tier,
 	favorites_only,
+	min_score_fallback,
 } = {}) {
 	return new Promise((resolve, reject) => {
 		const whereClauses = [];
@@ -84,8 +85,16 @@ function getItemsFiltered({
 		}
 
 		if (research_statement_id && Number.isFinite(Number(min_tier))) {
-			whereClauses.push("cf.relevance_tier >= ?");
-			whereParams.push(Number(min_tier));
+			if (Number.isFinite(Number(min_score_fallback))) {
+				// Include rows where tier is missing but final_score reaches equivalent threshold
+				whereClauses.push(
+					"(cf.relevance_tier >= ? OR (cf.relevance_tier IS NULL AND cf.final_score >= ?))"
+				);
+				whereParams.push(Number(min_tier), Number(min_score_fallback));
+			} else {
+				whereClauses.push("cf.relevance_tier >= ?");
+				whereParams.push(Number(min_tier));
+			}
 		}
 
 		const whereSQL = whereClauses.length

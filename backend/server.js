@@ -27,6 +27,7 @@ const {
 	getFavoriteItems,
 } = require("./database");
 const AIService = require("./services/ai");
+const { getScoringConfiguration } = require("./services/hybridScoring");
 const { initializeScheduler } = require("./jobs/scheduler");
 const { runHackerNewsCollection } = require("./jobs/hn-collection");
 const app = express();
@@ -121,6 +122,18 @@ app.get("/api/items", generalLimiter, async (req, res) => {
 			favorites_only,
 		} = req.query;
 		if (source || limit || offset || sort || min_tier || favorites_only) {
+			let min_score_fallback = undefined;
+			if (min_tier && research_statement_id) {
+				const config = getScoringConfiguration();
+				const tierNum = Number(min_tier);
+				if (Number.isFinite(tierNum)) {
+					if (tierNum >= 4) min_score_fallback = config.thresholds.tier4;
+					else if (tierNum >= 3) min_score_fallback = config.thresholds.tier3;
+					else if (tierNum >= 2) min_score_fallback = config.thresholds.tier2;
+					else min_score_fallback = config.thresholds.tier1;
+				}
+			}
+
 			const items = await getItemsFiltered({
 				source,
 				limit,
@@ -129,6 +142,7 @@ app.get("/api/items", generalLimiter, async (req, res) => {
 				sort,
 				min_tier: min_tier != null ? Number(min_tier) : undefined,
 				favorites_only: favorites_only === "true",
+				min_score_fallback,
 			});
 			const augmented = Array.isArray(items)
 				? items.map((it) => ({ ...it, comments_url: getHNCommentsUrl(it) }))
