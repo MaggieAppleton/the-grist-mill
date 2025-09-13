@@ -17,9 +17,15 @@ export default function TimelineItem({
 		item.highlight || (typeof relevance === "number" && relevance >= 7);
 	const domain = extractDomain(item.url);
 	const [isFavorite, setIsFavorite] = useState(!!item.is_favorite);
-	const [ratingTier, setRatingTier] = useState(null);
+	const [ratingTier, setRatingTier] = useState(item.user_rating || null);
 	const [menuOpen, setMenuOpen] = useState(false);
 	const menuRef = useRef(null);
+
+	// Sync local state with item prop changes
+	useEffect(() => {
+		setIsFavorite(!!item.is_favorite);
+		setRatingTier(item.user_rating || null);
+	}, [item.is_favorite, item.user_rating]);
 
 	const getSourceBadgeClass = (sourceType) => {
 		if (!sourceType) return "default";

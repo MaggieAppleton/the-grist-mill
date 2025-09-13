@@ -1,42 +1,77 @@
 const { db } = require("./connection");
 
-function getAllItems() {
+function getAllItems({ research_statement_id } = {}) {
 	return new Promise((resolve, reject) => {
-		const query = `
-		      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at, created_at, collected_at
-		      FROM content_items 
-		      ORDER BY created_at DESC
-		    `;
+		let query = `
+		      SELECT ci.id, ci.source_type, ci.source_id, ci.title, ci.summary, ci.page_text, ci.raw_content, ci.url, ci.highlight, ci.is_favorite, ci.favorited_at, ci.created_at, ci.collected_at
+		`;
+		
+		if (research_statement_id) {
+			query += `, ur.rating as user_rating
+				FROM content_items ci
+				LEFT JOIN user_ratings ur ON ur.content_item_id = ci.id AND ur.research_statement_id = ?
+			`;
+		} else {
+			query += `
+				FROM content_items ci
+			`;
+		}
+		
+		query += `
+		      ORDER BY ci.created_at DESC
+		`;
 
-		db.all(query, [], (err, rows) => {
+		const params = research_statement_id ? [research_statement_id] : [];
+		
+		db.all(query, params, (err, rows) => {
 			if (err) {
 				console.error("Error fetching items:", err.message);
 				reject(err);
 			} else {
-				resolve(rows);
+				// Add rating information to each item
+				const augmentedRows = rows.map(row => ({
+					...row,
+					user_rating: research_statement_id ? row.rating : null
+				}));
+				resolve(augmentedRows);
 			}
 		});
 	});
 }
 
-function getItemsFiltered({ source, limit = 50, offset = 0 } = {}) {
+function getItemsFiltered({ source, limit = 50, offset = 0, research_statement_id } = {}) {
 	return new Promise((resolve, reject) => {
 		const whereClauses = [];
 		const params = [];
 		if (source) {
-			whereClauses.push("source_type = ?");
+			whereClauses.push("ci.source_type = ?");
 			params.push(source);
 		}
+		
+		let query = `
+		      SELECT ci.id, ci.source_type, ci.source_id, ci.title, ci.summary, ci.page_text, ci.raw_content, ci.url, ci.highlight, ci.is_favorite, ci.favorited_at, ci.created_at, ci.collected_at
+		`;
+		
+		if (research_statement_id) {
+			query += `, ur.rating as user_rating
+				FROM content_items ci
+				LEFT JOIN user_ratings ur ON ur.content_item_id = ci.id AND ur.research_statement_id = ?
+			`;
+			params.unshift(research_statement_id);
+		} else {
+			query += `
+				FROM content_items ci
+			`;
+		}
+		
 		const whereSQL = whereClauses.length
 			? `WHERE ${whereClauses.join(" AND ")}`
 			: "";
-		const query = `
-		      SELECT id, source_type, source_id, title, summary, page_text, raw_content, url, highlight, is_favorite, favorited_at, created_at, collected_at
-		      FROM content_items
+		query += `
 		      ${whereSQL}
-		      ORDER BY created_at DESC
+		      ORDER BY ci.created_at DESC
 		      LIMIT ? OFFSET ?
-		    `;
+		`;
 		params.push(Number(limit) || 50, Number(offset) || 0);
 
 		db.all(query, params, (err, rows) => {

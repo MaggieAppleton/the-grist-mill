@@ -12,8 +12,15 @@ import useSettings from "./hooks/useSettings";
 import useResearchStatements from "./hooks/useResearchStatements";
 
 function Dashboard() {
+	// Load research statements and pick active one (fallback to first)
+	const { topics } = useResearchStatements({ autoLoad: true });
+	const activeResearchStatementId = Array.isArray(topics)
+		? (topics.find((t) => t.is_active) || topics[0])?.id
+		: undefined;
+
 	const { items, loading, error, isRefreshing, retry, refresh } = useFeed({
 		initialLimit: 200,
+		researchStatementId: activeResearchStatementId,
 	});
 	const {
 		query: searchQuery,
@@ -36,12 +43,6 @@ function Dashboard() {
 		load: loadSettings,
 		save: saveSettings,
 	} = useSettings();
-
-	// Load research statements and pick active one (fallback to first)
-	const { topics } = useResearchStatements({ autoLoad: true });
-	const activeResearchStatementId = Array.isArray(topics)
-		? (topics.find((t) => t.is_active) || topics[0])?.id
-		: undefined;
 
 	async function retryFetchItems() {
 		await retry();

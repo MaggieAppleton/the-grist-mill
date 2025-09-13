@@ -1,8 +1,9 @@
-export async function fetchItems({ limit, offset, source } = {}) {
+export async function fetchItems({ limit, offset, source, research_statement_id } = {}) {
 	const params = new URLSearchParams();
 	if (limit != null) params.set("limit", String(limit));
 	if (offset != null) params.set("offset", String(offset));
 	if (source) params.set("source", source);
+	if (research_statement_id) params.set("research_statement_id", String(research_statement_id));
 
 	const url = params.toString()
 		? `/api/items?${params.toString()}`

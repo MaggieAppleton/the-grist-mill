@@ -55,6 +55,18 @@ const strictLimiter = rateLimit({
 	legacyHeaders: false,
 });
 
+// More permissive limiter for user interactions like favorites and ratings
+const userInteractionLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000, // 15 minutes
+	max: 100, // limit each IP to 100 requests per windowMs
+	message: {
+		error: "Too many requests for this resource, please try again later.",
+		retryAfter: "15 minutes",
+	},
+	standardHeaders: true,
+	legacyHeaders: false,
+});
+
 const healthLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000,
 	max: 200,
@@ -99,15 +111,15 @@ function getHNCommentsUrl(item) {
 
 app.get("/api/items", generalLimiter, async (req, res) => {
 	try {
-		const { source, limit, offset } = req.query;
+		const { source, limit, offset, research_statement_id } = req.query;
 		if (source || limit || offset) {
-			const items = await getItemsFiltered({ source, limit, offset });
+			const items = await getItemsFiltered({ source, limit, offset, research_statement_id });
 			const augmented = Array.isArray(items)
 				? items.map((it) => ({ ...it, comments_url: getHNCommentsUrl(it) }))
 				: items;
 			return res.json(augmented);
 		}
-		const items = await getAllItems();
+		const items = await getAllItems({ research_statement_id });
 		const augmented = Array.isArray(items)
 			? items.map((it) => ({ ...it, comments_url: getHNCommentsUrl(it) }))
 			: items;
@@ -407,7 +419,7 @@ app.post(
 );
 
 // Feedback API: rate
-app.post("/api/feedback/rate", strictLimiter, async (req, res) => {
+app.post("/api/feedback/rate", userInteractionLimiter, async (req, res) => {
 	try {
 		const { content_item_id, research_statement_id, rating } = req.body || {};
 		const contentId = Number(content_item_id);
@@ -476,7 +488,7 @@ app.get("/api/feedback/stats", generalLimiter, async (req, res) => {
 });
 
 // Favorites API endpoints
-app.post("/api/favorites/toggle", strictLimiter, async (req, res) => {
+app.post("/api/favorites/toggle", userInteractionLimiter, async (req, res) => {
 	try {
 		const { content_item_id, is_favorite, research_statement_id } = req.body || {};
 		const contentId = Number(content_item_id);

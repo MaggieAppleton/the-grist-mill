@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchItems, triggerHNCollection } from "../services/api";
 
-export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxWaitMs = 60000 } = {}) {
+export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxWaitMs = 60000, researchStatementId } = {}) {
 	const [items, setItems] = useState(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
@@ -11,7 +11,7 @@ export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxW
 	useEffect(() => {
 		isMountedRef.current = true;
 		setLoading(true);
-		fetchItems({ limit: initialLimit })
+		fetchItems({ limit: initialLimit, research_statement_id: researchStatementId })
 			.then((data) => {
 				if (!isMountedRef.current) return;
 				setItems(data);
@@ -27,20 +27,20 @@ export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxW
 		return () => {
 			isMountedRef.current = false;
 		};
-	}, [initialLimit]);
+	}, [initialLimit, researchStatementId]);
 
 	const retry = useCallback(async () => {
 		setLoading(true);
 		setError(null);
 		try {
-			const data = await fetchItems({ limit: initialLimit });
+			const data = await fetchItems({ limit: initialLimit, research_statement_id: researchStatementId });
 			setItems(data);
 		} catch (err) {
 			setError(err.message || String(err));
 		} finally {
 			setLoading(false);
 		}
-	}, [initialLimit]);
+	}, [initialLimit, researchStatementId]);
 
 	const refresh = useCallback(async () => {
 		setIsRefreshing(true);
@@ -51,7 +51,7 @@ export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxW
 			let lastCount = Array.isArray(items) ? items.length : 0;
 			while (Date.now() < deadline) {
 				try {
-					const data = await fetchItems({ limit: initialLimit });
+					const data = await fetchItems({ limit: initialLimit, research_statement_id: researchStatementId });
 					setItems(data);
 					const countNow = Array.isArray(data) ? data.length : 0;
 					if (countNow > lastCount) break;
@@ -65,7 +65,7 @@ export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxW
 		} finally {
 			setIsRefreshing(false);
 		}
-	}, [initialLimit, items, maxWaitMs, pollIntervalMs]);
+	}, [initialLimit, items, maxWaitMs, pollIntervalMs, researchStatementId]);
 
 	return { items, setItems, loading, error, isRefreshing, retry, refresh };
 }
