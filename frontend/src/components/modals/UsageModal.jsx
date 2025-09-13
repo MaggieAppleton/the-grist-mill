@@ -5,7 +5,7 @@ import UsageChart from "./UsageChart";
 function UsageModal({ usage, loading, error, onClose }) {
 	return (
 		<div className="modal-backdrop" role="dialog" aria-modal="true">
-			<div className="modal">
+			<div className="modal usage-modal">
 				<div className="modal-header">
 					<h2>AI Usage</h2>
 					<button className="modal-close" onClick={onClose} aria-label="Close">
@@ -26,23 +26,26 @@ function UsageModal({ usage, loading, error, onClose }) {
 									${Number(usage.cumulative_cost || 0).toFixed(6)}
 								</div>
 								<div className="cost-details">
-									Daily Budget: ${Number(usage.daily_budget_usd || 0).toFixed(2)} | 
-									Cost per 1K tokens: ${Number(usage.cost_per_1k_tokens_usd || 0).toFixed(5)}
+									Daily Budget: $
+									{Number(usage.daily_budget_usd || 0).toFixed(2)} | Cost per 1K
+									tokens: $
+									{Number(usage.cost_per_1k_tokens_usd || 0).toFixed(5)}
 								</div>
 							</div>
 
 							{/* Chart */}
 							{usage.historical_data && usage.historical_data.length > 0 && (
 								<div className="chart-container">
-									<UsageChart 
-										data={usage.historical_data} 
-										width={800} 
-										height={400} 
+									<UsageChart
+										data={usage.historical_data}
+										width={1000}
+										height={500}
 									/>
 								</div>
 							)}
 
-							{(!usage.historical_data || usage.historical_data.length === 0) && (
+							{(!usage.historical_data ||
+								usage.historical_data.length === 0) && (
 								<p className="no-data-message">No usage data available.</p>
 							)}
 						</div>

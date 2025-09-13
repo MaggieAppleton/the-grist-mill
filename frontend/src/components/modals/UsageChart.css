@@ -1,24 +1,41 @@
 .usage-chart-container {
 	position: relative;
 	width: 100%;
-	overflow: hidden;
+	overflow: visible; /* Allow tooltips to extend beyond chart bounds */
 }
 
 .chart-tooltip {
 	position: absolute;
 	text-align: left;
-	padding: 8px;
+	padding: 10px 12px;
 	font-size: 12px;
-	background: rgba(0, 0, 0, 0.8);
-	color: white;
-	border-radius: 4px;
+	background: white;
+	color: #333;
+	border-radius: 6px;
 	pointer-events: none;
 	opacity: 0;
 	z-index: 1000;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	border: 1px solid #e5e7eb;
+	transition: opacity 0.2s ease;
+	max-width: 200px;
+	min-width: 160px;
 }
 
 .tooltip-content {
-	line-height: 1.4;
+	line-height: 1.5;
+}
+
+.tooltip-content > div {
+	margin-bottom: 2px;
+}
+
+.tooltip-content > div:last-child {
+	margin-bottom: 0;
+}
+
+.tooltip-content span {
+	margin-right: 6px;
 }
 
 .usage-chart-container .bar {

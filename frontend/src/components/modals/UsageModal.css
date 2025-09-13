@@ -26,11 +26,19 @@
 	color: #6c757d;
 }
 
+/* Usage modal specific overrides for larger chart */
+.modal-backdrop:has(.usage-modal) .modal {
+	max-width: 1100px; /* Accommodate 1000px chart + padding */
+	width: 95%;
+}
+
 .chart-container {
 	background: #f8f9fa;
 	border-radius: 8px;
 	padding: 16px;
 	margin-bottom: 16px;
+	overflow-x: auto; /* Allow horizontal scrolling if needed */
+	overflow-y: visible; /* Allow tooltips to extend vertically */
 }
 
 .no-data-message {
