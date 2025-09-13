@@ -111,9 +111,25 @@ function getHNCommentsUrl(item) {
 
 app.get("/api/items", generalLimiter, async (req, res) => {
 	try {
-		const { source, limit, offset, research_statement_id } = req.query;
-		if (source || limit || offset) {
-			const items = await getItemsFiltered({ source, limit, offset, research_statement_id });
+		const {
+			source,
+			limit,
+			offset,
+			research_statement_id,
+			sort,
+			min_tier,
+			favorites_only,
+		} = req.query;
+		if (source || limit || offset || sort || min_tier || favorites_only) {
+			const items = await getItemsFiltered({
+				source,
+				limit,
+				offset,
+				research_statement_id,
+				sort,
+				min_tier: min_tier != null ? Number(min_tier) : undefined,
+				favorites_only: favorites_only === "true",
+			});
 			const augmented = Array.isArray(items)
 				? items.map((it) => ({ ...it, comments_url: getHNCommentsUrl(it) }))
 				: items;
@@ -169,23 +185,26 @@ app.get("/api/usage", generalLimiter, async (req, res) => {
 	try {
 		const days = parseInt(req.query.days) || 14;
 		const historicalData = await getHistoricalAiUsage(days);
-		
+
 		const dailyBudgetUSD = Number(process.env.AI_DAILY_BUDGET_USD || 1.0);
 		const costPer1K = Number(process.env.AI_COST_PER_1K_TOKENS_USD || 0.00015);
-		
+
 		// Calculate cumulative cost
 		const cumulativeCost = historicalData.reduce((sum, day) => {
 			return sum + Number(day.estimated_cost || 0);
 		}, 0);
-		
+
 		// Add budget info to each day
-		const dataWithBudget = historicalData.map(day => ({
+		const dataWithBudget = historicalData.map((day) => ({
 			...day,
 			daily_budget_usd: dailyBudgetUSD,
-			remaining_budget_usd: Math.max(0, dailyBudgetUSD - Number(day.estimated_cost || 0)),
+			remaining_budget_usd: Math.max(
+				0,
+				dailyBudgetUSD - Number(day.estimated_cost || 0)
+			),
 			exceeded: Number(day.estimated_cost || 0) >= dailyBudgetUSD,
 		}));
-		
+
 		res.json({
 			historical_data: dataWithBudget,
 			cumulative_cost: cumulativeCost,
@@ -490,10 +509,13 @@ app.get("/api/feedback/stats", generalLimiter, async (req, res) => {
 // Favorites API endpoints
 app.post("/api/favorites/toggle", userInteractionLimiter, async (req, res) => {
 	try {
-		const { content_item_id, is_favorite, research_statement_id } = req.body || {};
+		const { content_item_id, is_favorite, research_statement_id } =
+			req.body || {};
 		const contentId = Number(content_item_id);
 		const isFav = Boolean(is_favorite);
-		const statementId = research_statement_id ? Number(research_statement_id) : null;
+		const statementId = research_statement_id
+			? Number(research_statement_id)
+			: null;
 
 		if (!Number.isFinite(contentId) || contentId <= 0) {
 			return res.status(400).json({
@@ -502,7 +524,10 @@ app.post("/api/favorites/toggle", userInteractionLimiter, async (req, res) => {
 		}
 
 		// Validate research_statement_id if provided
-		if (statementId !== null && (!Number.isFinite(statementId) || statementId <= 0)) {
+		if (
+			statementId !== null &&
+			(!Number.isFinite(statementId) || statementId <= 0)
+		) {
 			return res.status(400).json({
 				error: "research_statement_id, if provided, must be a positive number",
 			});
@@ -517,11 +542,11 @@ app.post("/api/favorites/toggle", userInteractionLimiter, async (req, res) => {
 		}
 
 		const result = await toggleFavorite(contentId, isFav, statementId);
-		return res.json({ 
-			ok: true, 
+		return res.json({
+			ok: true,
 			is_favorite: isFav,
 			changes: result.changes,
-			rating_set: result.ratingSet
+			rating_set: result.ratingSet,
 		});
 	} catch (err) {
 		console.error("Error toggling favorite:", err);
@@ -535,12 +560,12 @@ app.post("/api/favorites/toggle", userInteractionLimiter, async (req, res) => {
 app.get("/api/favorites", generalLimiter, async (req, res) => {
 	try {
 		const { only, limit, offset } = req.query;
-		
+
 		// If only=true, return only favorites
 		if (only === "true") {
 			const favorites = await getFavoriteItems({
 				limit: Number(limit) || 50,
-				offset: Number(offset) || 0
+				offset: Number(offset) || 0,
 			});
 			const augmented = Array.isArray(favorites)
 				? favorites.map((it) => ({ ...it, comments_url: getHNCommentsUrl(it) }))
@@ -549,9 +574,9 @@ app.get("/api/favorites", generalLimiter, async (req, res) => {
 		}
 
 		// Otherwise, fall back to regular items endpoint behavior (all items)
-		const items = await getItemsFiltered({ 
-			limit: Number(limit) || 50, 
-			offset: Number(offset) || 0 
+		const items = await getItemsFiltered({
+			limit: Number(limit) || 50,
+			offset: Number(offset) || 0,
 		});
 		const augmented = Array.isArray(items)
 			? items.map((it) => ({ ...it, comments_url: getHNCommentsUrl(it) }))

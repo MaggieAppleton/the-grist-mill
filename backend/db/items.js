@@ -5,7 +5,7 @@ function getAllItems({ research_statement_id } = {}) {
 		let query = `
 		      SELECT ci.id, ci.source_type, ci.source_id, ci.title, ci.summary, ci.page_text, ci.raw_content, ci.url, ci.highlight, ci.is_favorite, ci.favorited_at, ci.created_at, ci.collected_at
 		`;
-		
+
 		if (research_statement_id) {
 			query += `, ur.rating as user_rating
 				FROM content_items ci
@@ -16,22 +16,22 @@ function getAllItems({ research_statement_id } = {}) {
 				FROM content_items ci
 			`;
 		}
-		
+
 		query += `
 		      ORDER BY ci.created_at DESC
 		`;
 
 		const params = research_statement_id ? [research_statement_id] : [];
-		
+
 		db.all(query, params, (err, rows) => {
 			if (err) {
 				console.error("Error fetching items:", err.message);
 				reject(err);
 			} else {
 				// Add rating information to each item
-				const augmentedRows = rows.map(row => ({
+				const augmentedRows = rows.map((row) => ({
 					...row,
-					user_rating: research_statement_id ? row.rating : null
+					user_rating: research_statement_id ? row.rating : null,
 				}));
 				resolve(augmentedRows);
 			}
@@ -39,40 +39,80 @@ function getAllItems({ research_statement_id } = {}) {
 	});
 }
 
-function getItemsFiltered({ source, limit = 50, offset = 0, research_statement_id } = {}) {
+function getItemsFiltered({
+	source,
+	limit = 50,
+	offset = 0,
+	research_statement_id,
+	sort,
+	min_tier,
+	favorites_only,
+} = {}) {
 	return new Promise((resolve, reject) => {
 		const whereClauses = [];
-		const params = [];
+		const whereParams = [];
+
+		// Filters
 		if (source) {
 			whereClauses.push("ci.source_type = ?");
-			params.push(source);
+			whereParams.push(source);
 		}
-		
-		let query = `
-		      SELECT ci.id, ci.source_type, ci.source_id, ci.title, ci.summary, ci.page_text, ci.raw_content, ci.url, ci.highlight, ci.is_favorite, ci.favorited_at, ci.created_at, ci.collected_at
+		if (favorites_only) {
+			whereClauses.push("ci.is_favorite = 1");
+		}
+
+		// Base SELECT
+		let selectSQL = `
+		      SELECT 
+		        ci.id, ci.source_type, ci.source_id, ci.title, ci.summary, ci.page_text, ci.raw_content, ci.url, ci.highlight, ci.is_favorite, ci.favorited_at, ci.created_at, ci.collected_at
 		`;
-		
+		let fromSQL = `
+				FROM content_items ci
+		`;
+
+		const joinParams = [];
 		if (research_statement_id) {
-			query += `, ur.rating as user_rating
-				FROM content_items ci
-				LEFT JOIN user_ratings ur ON ur.content_item_id = ci.id AND ur.research_statement_id = ?
+			selectSQL += `, ur.rating as user_rating, cf.final_score, cf.relevance_tier`;
+			fromSQL += `
+				LEFT JOIN user_ratings ur 
+				  ON ur.content_item_id = ci.id AND ur.research_statement_id = ?
+				LEFT JOIN content_features cf 
+				  ON cf.content_item_id = ci.id AND cf.research_statement_id = ?
 			`;
-			params.unshift(research_statement_id);
-		} else {
-			query += `
-				FROM content_items ci
-			`;
+			joinParams.push(Number(research_statement_id));
+			joinParams.push(Number(research_statement_id));
 		}
-		
+
+		if (research_statement_id && Number.isFinite(Number(min_tier))) {
+			whereClauses.push("cf.relevance_tier >= ?");
+			whereParams.push(Number(min_tier));
+		}
+
 		const whereSQL = whereClauses.length
 			? `WHERE ${whereClauses.join(" AND ")}`
 			: "";
-		query += `
-		      ${whereSQL}
-		      ORDER BY ci.created_at DESC
-		      LIMIT ? OFFSET ?
-		`;
-		params.push(Number(limit) || 50, Number(offset) || 0);
+
+		let orderSQL = "ORDER BY ci.created_at DESC";
+		if (research_statement_id && sort === "score_desc") {
+			orderSQL = `ORDER BY (cf.final_score IS NULL) ASC, cf.final_score DESC, ci.created_at DESC`;
+		}
+
+		const query =
+			selectSQL +
+			"\n" +
+			fromSQL +
+			"\n" +
+			whereSQL +
+			"\n" +
+			orderSQL +
+			"\n" +
+			"LIMIT ? OFFSET ?\n";
+		const params = [
+			...joinParams,
+			...whereParams,
+			Number(limit) || 50,
+			Number(offset) || 0,
+		];
 
 		db.all(query, params, (err, rows) => {
 			if (err) {

@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchItems, triggerHNCollection } from "../services/api";
 
-export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxWaitMs = 60000, researchStatementId } = {}) {
+export default function useFeed({
+	initialLimit = 20,
+	pollIntervalMs = 3000,
+	maxWaitMs = 60000,
+	researchStatementId,
+} = {}) {
 	const [items, setItems] = useState(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
@@ -11,7 +16,11 @@ export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxW
 	useEffect(() => {
 		isMountedRef.current = true;
 		setLoading(true);
-		fetchItems({ limit: initialLimit, research_statement_id: researchStatementId })
+		fetchItems({
+			limit: initialLimit,
+			research_statement_id: researchStatementId,
+			sort: researchStatementId ? "score_desc" : undefined,
+		})
 			.then((data) => {
 				if (!isMountedRef.current) return;
 				setItems(data);
@@ -33,7 +42,11 @@ export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxW
 		setLoading(true);
 		setError(null);
 		try {
-			const data = await fetchItems({ limit: initialLimit, research_statement_id: researchStatementId });
+			const data = await fetchItems({
+				limit: initialLimit,
+				research_statement_id: researchStatementId,
+				sort: researchStatementId ? "score_desc" : undefined,
+			});
 			setItems(data);
 		} catch (err) {
 			setError(err.message || String(err));
@@ -51,12 +64,20 @@ export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxW
 			let lastCount = Array.isArray(items) ? items.length : 0;
 			while (Date.now() < deadline) {
 				try {
-					const data = await fetchItems({ limit: initialLimit, research_statement_id: researchStatementId });
+					const data = await fetchItems({
+						limit: initialLimit,
+						research_statement_id: researchStatementId,
+						sort: researchStatementId ? "score_desc" : undefined,
+					});
 					setItems(data);
 					const countNow = Array.isArray(data) ? data.length : 0;
 					if (countNow > lastCount) break;
 				} catch (fetchError) {
-					setError(`Failed to refresh items: ${fetchError.message || String(fetchError)}`);
+					setError(
+						`Failed to refresh items: ${
+							fetchError.message || String(fetchError)
+						}`
+					);
 				}
 				await new Promise((r) => setTimeout(r, pollIntervalMs));
 			}
@@ -69,5 +90,3 @@ export default function useFeed({ initialLimit = 20, pollIntervalMs = 3000, maxW
 
 	return { items, setItems, loading, error, isRefreshing, retry, refresh };
 }
-
-

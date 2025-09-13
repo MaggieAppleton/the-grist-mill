@@ -251,9 +251,8 @@ Follow-up:
 
 #### Task 8C.2b: Favorites UI
 
-- [ ] Heart icon next to relevance dot; toggles favorite
-- [ ] Favoriting sets the rating to Very Relevant (tier 4) and persists it
-- [ ] Filter switch on dashboard to show only favorites
+- [x] Heart icon next to relevance dot; toggles favorite
+- [x] Favoriting sets the rating to Very Relevant (tier 4) and persists it
 
 **Commit**: "Add favorites UI and dashboard filter"
 
@@ -283,9 +282,9 @@ Follow-up:
 
 #### Task 8D.3: Score-Based Content Sorting
 
-- [ ] Update API endpoints to sort by final_score per topic (filter by `research_statement_id`)
-- [ ] Add filtering by relevance tier and by favorites
-- [ ] Update frontend to display relevance indicators and heart state
+- [x] Update API endpoints to sort by final_score per topic (filter by `research_statement_id`)
+- [x] Add filtering by relevance tier and by favorites
+- [x] Update frontend to display relevance indicators and heart state
 - [ ] Test improved ranking accuracy
 
 **Commit**: "Add score-based content ranking and filtering"
@@ -416,24 +415,6 @@ Each content item will show:
 - **Selective Processing**: Only rank content above minimum keyword threshold
 - **Model Optimization**: Test smaller/cheaper embedding models
 
-## Success Metrics
+## Future Improvements
 
-### Ranking Quality
-
-- **User Satisfaction**: % of "Very Relevant" items rated as actually relevant
-- **Discovery Rate**: % of relevant content surfaced vs missed
-- **Feedback Volume**: User engagement with rating system
-- **Favorites Usage**: # of favorited items and revisit rate
-
-### System Performance
-
-- **Response Time**: Dashboard load time under 2 seconds
-- **Cost Efficiency**: Daily embedding/ranking costs under budget
-- **Feedback Coverage**: % of content items with user ratings
-
-### User Experience
-
-- **Daily Usage**: Consistent engagement with dashboard
-- **Rating Efficiency**: Average time to rate items (target: <5 seconds)
-- **Accuracy Improvement**: Ranking quality improvement over time
-- **Favorite Recall**: Time to locate favorited items (target: instant via filter)
+- [ ] Filter switch on dashboard to show only favorites

@@ -1,9 +1,22 @@
-export async function fetchItems({ limit, offset, source, research_statement_id } = {}) {
+export async function fetchItems({
+	limit,
+	offset,
+	source,
+	research_statement_id,
+	sort,
+	min_tier,
+	favorites_only,
+} = {}) {
 	const params = new URLSearchParams();
 	if (limit != null) params.set("limit", String(limit));
 	if (offset != null) params.set("offset", String(offset));
 	if (source) params.set("source", source);
-	if (research_statement_id) params.set("research_statement_id", String(research_statement_id));
+	if (research_statement_id)
+		params.set("research_statement_id", String(research_statement_id));
+	if (sort) params.set("sort", String(sort));
+	if (min_tier != null) params.set("min_tier", String(min_tier));
+	if (favorites_only != null)
+		params.set("favorites_only", String(Boolean(favorites_only)));
 
 	const url = params.toString()
 		? `/api/items?${params.toString()}`
@@ -18,8 +31,8 @@ export async function fetchItems({ limit, offset, source, research_statement_id 
 export async function fetchUsage(days = 14) {
 	const params = new URLSearchParams();
 	if (days != null) params.set("days", String(days));
-	
-	const url = params.toString() 
+
+	const url = params.toString()
 		? `/api/usage?${params.toString()}`
 		: "/api/usage";
 	const res = await fetch(url);
