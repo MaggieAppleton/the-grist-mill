@@ -83,6 +83,17 @@ module.exports = {
 		contentFeatures.getItemsMissingFeedbackScoreForStatement,
 	updateContentFeaturesFeedbackScore:
 		contentFeatures.updateContentFeaturesFeedbackScore,
+	// hybrid scoring
+	getItemsMissingKeywordScoreForStatement:
+		contentFeatures.getItemsMissingKeywordScoreForStatement,
+	updateContentFeaturesKeywordScore:
+		contentFeatures.updateContentFeaturesKeywordScore,
+	getItemsMissingFinalScoreForStatement:
+		contentFeatures.getItemsMissingFinalScoreForStatement,
+	updateContentFeaturesHybridScore:
+		contentFeatures.updateContentFeaturesHybridScore,
+	batchUpdateContentFeaturesHybridScores:
+		contentFeatures.batchUpdateContentFeaturesHybridScores,
 	// user ratings
 	upsertUserRating: userRatings.upsertUserRating,
 	getUserRatingStats: userRatings.getUserRatingStats,

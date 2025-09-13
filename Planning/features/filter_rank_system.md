@@ -274,12 +274,12 @@ Follow-up:
 
 #### Task 8D.2: Hybrid Score Calculation
 
-- [ ] Combine keyword, similarity, and feedback scores
-- [ ] Implement weighted scoring formula
-- [ ] Update relevance tiers based on combined scores
-- [ ] Add configurable weights for score components
+- [x] Combine keyword, similarity, and feedback scores
+- [x] Implement weighted scoring formula
+- [x] Update relevance tiers based on combined scores
+- [x] Add configurable weights for score components
 
-**Commit**: "Implement hybrid scoring algorithm"
+**Commit**: "Implement hybrid scoring algorithm" ✅ COMPLETED (September 13, 2025)
 
 #### Task 8D.3: Score-Based Content Sorting
 

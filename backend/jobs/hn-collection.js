@@ -9,6 +9,9 @@ const {
 	getItemIdsBySource,
 	getRatedItemsWithEmbeddings,
 	updateContentFeaturesFeedbackScore,
+	updateContentFeaturesKeywordScore,
+	getItemsMissingFinalScoreForStatement,
+	batchUpdateContentFeaturesHybridScores,
 } = require("../database");
 const AIService = require("../services/ai");
 const {
@@ -317,14 +320,16 @@ async function runHackerNewsCollection() {
 				// Compute feedback scores for newly added content
 				try {
 					let feedbackUpdates = 0;
-					
+
 					for (const stmt of statementsWithEmbeddings) {
 						// Get rated items for this research statement
 						const ratedItems = await getRatedItemsWithEmbeddings(stmt.id);
-						
+
 						if (ratedItems.length === 0) {
 							console.log(
-								`[${new Date().toISOString()}] No rated items available for statement ${stmt.id} - skipping feedback scoring`
+								`[${new Date().toISOString()}] No rated items available for statement ${
+									stmt.id
+								} - skipping feedback scoring`
 							);
 							continue;
 						}
@@ -351,9 +356,14 @@ async function runHackerNewsCollection() {
 						}
 
 						if (itemsToScore.length > 0) {
-							const { batchComputeFeedbackScores } = require("../services/feedbackScoring");
-							const feedbackResults = batchComputeFeedbackScores(itemsToScore, ratedItems);
-							
+							const {
+								batchComputeFeedbackScores,
+							} = require("../services/feedbackScoring");
+							const feedbackResults = batchComputeFeedbackScores(
+								itemsToScore,
+								ratedItems
+							);
+
 							for (const result of feedbackResults) {
 								try {
 									await updateContentFeaturesFeedbackScore(
@@ -364,7 +374,9 @@ async function runHackerNewsCollection() {
 									feedbackUpdates += 1;
 								} catch (updateErr) {
 									console.warn(
-										`[${new Date().toISOString()}] Failed to update feedback score for item ${result.content_item_id} (stmt ${stmt.id}): ${updateErr.message}`
+										`[${new Date().toISOString()}] Failed to update feedback score for item ${
+											result.content_item_id
+										} (stmt ${stmt.id}): ${updateErr.message}`
 									);
 								}
 							}
@@ -380,6 +392,96 @@ async function runHackerNewsCollection() {
 					console.warn(
 						`[${new Date().toISOString()}] Failed to compute feedback scores:`,
 						feedbackErr.message
+					);
+				}
+
+				// Compute hybrid scores (keyword + similarity + feedback) for newly added content
+				try {
+					let keywordUpdates = 0;
+					let hybridUpdates = 0;
+
+					for (const stmt of statementsWithEmbeddings) {
+						// Step 1: Compute keyword scores for newly processed items
+						const {
+							batchCalculateKeywordScores,
+						} = require("../services/keywordScoring");
+
+						const newItems = [];
+						for (const row of rows) {
+							const original = sourceIdToItem.get(String(row.source_id));
+							if (original) {
+								newItems.push({ id: row.id, ...original });
+							}
+						}
+
+						if (newItems.length > 0) {
+							const keywordResults = batchCalculateKeywordScores(
+								newItems,
+								stmt
+							);
+
+							for (const result of keywordResults) {
+								try {
+									await updateContentFeaturesKeywordScore(
+										result.content_item_id,
+										result.research_statement_id,
+										result.keyword_score
+									);
+									keywordUpdates += 1;
+								} catch (updateErr) {
+									console.warn(
+										`[${new Date().toISOString()}] Failed to update keyword score for item ${
+											result.content_item_id
+										} (stmt ${stmt.id}): ${updateErr.message}`
+									);
+								}
+							}
+						}
+
+						// Step 2: Compute hybrid scores for items that now have all component scores
+						const missingHybridItems =
+							await getItemsMissingFinalScoreForStatement(stmt.id, {
+								limit: 100,
+							});
+
+						if (missingHybridItems.length > 0) {
+							const {
+								batchCalculateHybridScores,
+							} = require("../services/hybridScoring");
+							const hybridResults =
+								batchCalculateHybridScores(missingHybridItems);
+
+							try {
+								const updateResult =
+									await batchUpdateContentFeaturesHybridScores(hybridResults);
+								hybridUpdates += updateResult.completed || 0;
+
+								if (updateResult.failed > 0) {
+									console.warn(
+										`[${new Date().toISOString()}] ${
+											updateResult.failed
+										} hybrid score updates failed for statement ${stmt.id}`
+									);
+								}
+							} catch (batchErr) {
+								console.warn(
+									`[${new Date().toISOString()}] Batch hybrid scoring failed for statement ${
+										stmt.id
+									}: ${batchErr.message}`
+								);
+							}
+						}
+					}
+
+					if (keywordUpdates > 0 || hybridUpdates > 0) {
+						console.log(
+							`[${new Date().toISOString()}] Hybrid scoring completed: ${keywordUpdates} keyword updates, ${hybridUpdates} hybrid updates`
+						);
+					}
+				} catch (hybridErr) {
+					console.warn(
+						`[${new Date().toISOString()}] Failed to compute hybrid scores:`,
+						hybridErr.message
 					);
 				}
 			}

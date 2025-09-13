@@ -134,7 +134,10 @@ function updateContentFeaturesSimilarityAndTier(
 }
 
 // Get rated items with their embeddings for feedback-based scoring
-function getRatedItemsWithEmbeddings(researchStatementId, { limit = 500 } = {}) {
+function getRatedItemsWithEmbeddings(
+	researchStatementId,
+	{ limit = 500 } = {}
+) {
 	return new Promise((resolve, reject) => {
 		const sql = `
 				SELECT 
@@ -223,6 +226,190 @@ function updateContentFeaturesFeedbackScore(
 	});
 }
 
+// Update keyword score in content_features
+function updateContentFeaturesKeywordScore(
+	contentItemId,
+	researchStatementId,
+	keywordScore
+) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+				UPDATE content_features
+				SET keyword_score = ?,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE content_item_id = ? AND research_statement_id = ?
+			`;
+		db.run(
+			sql,
+			[
+				Number(keywordScore) || 0,
+				Number(contentItemId),
+				Number(researchStatementId),
+			],
+			function (err) {
+				if (err) return reject(err);
+				resolve(this.changes);
+			}
+		);
+	});
+}
+
+// Update final score and relevance tier in content_features
+function updateContentFeaturesHybridScore(
+	contentItemId,
+	researchStatementId,
+	finalScore,
+	relevanceTier
+) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+				UPDATE content_features
+				SET final_score = ?,
+				    relevance_tier = ?,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE content_item_id = ? AND research_statement_id = ?
+			`;
+		db.run(
+			sql,
+			[
+				Number(finalScore) || 0,
+				Number(relevanceTier) || 1,
+				Number(contentItemId),
+				Number(researchStatementId),
+			],
+			function (err) {
+				if (err) return reject(err);
+				resolve(this.changes);
+			}
+		);
+	});
+}
+
+// Batch update multiple content features with hybrid scores
+function batchUpdateContentFeaturesHybridScores(updates) {
+	return new Promise((resolve, reject) => {
+		if (!Array.isArray(updates) || updates.length === 0) {
+			return resolve(0);
+		}
+
+		db.serialize(() => {
+			db.run("BEGIN TRANSACTION", (beginErr) => {
+				if (beginErr) return reject(beginErr);
+
+				const sql = `
+					UPDATE content_features
+					SET final_score = ?,
+					    relevance_tier = ?,
+					    updated_at = CURRENT_TIMESTAMP
+					WHERE content_item_id = ? AND research_statement_id = ?
+				`;
+
+				let completed = 0;
+				let failed = 0;
+
+				const stmt = db.prepare(sql);
+
+				for (const update of updates) {
+					stmt.run(
+						[
+							Number(update.finalScore) || 0,
+							Number(update.relevanceTier) || 1,
+							Number(update.content_item_id),
+							Number(update.research_statement_id),
+						],
+						function (err) {
+							if (err) {
+								console.warn(
+									`Failed to update hybrid score for item ${update.content_item_id}:`,
+									err
+								);
+								failed++;
+							} else {
+								completed++;
+							}
+
+							if (completed + failed === updates.length) {
+								stmt.finalize((finalizeErr) => {
+									if (finalizeErr) {
+										db.run("ROLLBACK", () => reject(finalizeErr));
+									} else {
+										db.run("COMMIT", (commitErr) => {
+											if (commitErr) return reject(commitErr);
+											resolve({ completed, failed, total: updates.length });
+										});
+									}
+								});
+							}
+						}
+					);
+				}
+			});
+		});
+	});
+}
+
+// Get items missing keyword scores for a research statement
+function getItemsMissingKeywordScoreForStatement(
+	researchStatementId,
+	{ limit = 100 } = {}
+) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+				SELECT 
+					ci.id, ci.title, ci.summary, ci.page_text, ci.raw_content,
+					cf.content_item_id, cf.research_statement_id
+				FROM content_items ci
+				JOIN content_features cf ON cf.content_item_id = ci.id
+				WHERE cf.research_statement_id = ?
+				  AND (cf.keyword_score IS NULL)
+				ORDER BY ci.created_at DESC
+				LIMIT ?
+			`;
+		db.all(
+			sql,
+			[Number(researchStatementId), Math.max(1, Number(limit) || 100)],
+			(err, rows) => {
+				if (err) return reject(err);
+				resolve(rows || []);
+			}
+		);
+	});
+}
+
+// Get items missing final scores (hybrid scoring) for a research statement
+function getItemsMissingFinalScoreForStatement(
+	researchStatementId,
+	{ limit = 100 } = {}
+) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+				SELECT 
+					cf.content_item_id,
+					cf.research_statement_id,
+					cf.keyword_score,
+					cf.similarity_score,
+					cf.feedback_score,
+					cf.final_score,
+					cf.relevance_tier
+				FROM content_features cf
+				WHERE cf.research_statement_id = ?
+				  AND cf.keyword_score IS NOT NULL
+				  AND cf.similarity_score IS NOT NULL
+				  AND (cf.final_score IS NULL OR cf.relevance_tier IS NULL)
+				ORDER BY cf.updated_at ASC
+				LIMIT ?
+			`;
+		db.all(
+			sql,
+			[Number(researchStatementId), Math.max(1, Number(limit) || 100)],
+			(err, rows) => {
+				if (err) return reject(err);
+				resolve(rows || []);
+			}
+		);
+	});
+}
+
 module.exports = {
 	getActiveResearchStatements,
 	getItemsMissingEmbeddingForStatement,
@@ -232,4 +419,10 @@ module.exports = {
 	getRatedItemsWithEmbeddings,
 	getItemsMissingFeedbackScoreForStatement,
 	updateContentFeaturesFeedbackScore,
+	// New hybrid scoring functions
+	updateContentFeaturesKeywordScore,
+	updateContentFeaturesHybridScore,
+	batchUpdateContentFeaturesHybridScores,
+	getItemsMissingKeywordScoreForStatement,
+	getItemsMissingFinalScoreForStatement,
 };
