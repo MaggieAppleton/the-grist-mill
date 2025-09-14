@@ -306,12 +306,12 @@ Follow-up:
 
 #### Task 8E.2: Batch Re-ranking
 
-- [ ] Re-calculate scores when research statements change
-- [ ] Background job for re-ranking existing content
-- [ ] Progress tracking for large re-ranking operations
-- [ ] Optimization to only re-rank when needed
+- [x] Re-calculate scores when research statements change
+- [x] Background job for re-ranking existing content
+- [x] Progress tracking for large re-ranking operations
+- [x] Optimization to only re-rank when needed (per-statement and batched)
 
-**Commit**: "Add batch re-ranking capabilities"
+**Commit**: "Add batch re-ranking capabilities" ✅ COMPLETED (September 13, 2025)
 
 ---
 

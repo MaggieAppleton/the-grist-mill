@@ -410,6 +410,64 @@ function getItemsMissingFinalScoreForStatement(
 	});
 }
 
+// Reset similarity and final score fields for a research statement
+function resetSimilarityAndFinalForStatement(researchStatementId) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+                UPDATE content_features
+                SET similarity_score = NULL,
+                    final_score = NULL,
+                    relevance_tier = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE research_statement_id = ?
+            `;
+		db.run(sql, [Number(researchStatementId)], function (err) {
+			if (err) return reject(err);
+			resolve(this.changes);
+		});
+	});
+}
+
+// Reset feedback scores for a research statement
+function resetFeedbackForStatement(researchStatementId) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+                UPDATE content_features
+                SET feedback_score = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE research_statement_id = ?
+            `;
+		db.run(sql, [Number(researchStatementId)], function (err) {
+			if (err) return reject(err);
+			resolve(this.changes);
+		});
+	});
+}
+
+// Get counts for monitoring progress for a statement
+function getFeatureCountsForStatement(researchStatementId) {
+	return new Promise((resolve, reject) => {
+		const sql = `
+                SELECT 
+                  COUNT(*) AS total,
+                  SUM(CASE WHEN similarity_score IS NULL THEN 1 ELSE 0 END) AS missing_similarity,
+                  SUM(CASE WHEN feedback_score IS NULL THEN 1 ELSE 0 END) AS missing_feedback,
+                  SUM(CASE WHEN final_score IS NULL OR relevance_tier IS NULL THEN 1 ELSE 0 END) AS missing_final
+                FROM content_features
+                WHERE research_statement_id = ?
+            `;
+		db.get(sql, [Number(researchStatementId)], (err, row) => {
+			if (err) return reject(err);
+			resolve({
+				total: Number(row?.total || 0),
+				missing_similarity: Number(row?.missing_similarity || 0),
+				missing_feedback: Number(row?.missing_feedback || 0),
+				missing_final: Number(row?.missing_final || 0),
+			});
+		});
+	});
+}
+
 module.exports = {
 	getActiveResearchStatements,
 	getItemsMissingEmbeddingForStatement,
@@ -425,4 +483,7 @@ module.exports = {
 	batchUpdateContentFeaturesHybridScores,
 	getItemsMissingKeywordScoreForStatement,
 	getItemsMissingFinalScoreForStatement,
+	resetSimilarityAndFinalForStatement,
+	resetFeedbackForStatement,
+	getFeatureCountsForStatement,
 };

@@ -29,6 +29,7 @@ const {
 const AIService = require("./services/ai");
 const { getScoringConfiguration } = require("./services/hybridScoring");
 const { initializeScheduler } = require("./jobs/scheduler");
+const { runRerank, getStatus: getRerankStatus } = require("./jobs/rerank");
 const { runHackerNewsCollection } = require("./jobs/hn-collection");
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -770,6 +771,29 @@ app.get("/api/ai/test", strictLimiter, async (req, res) => {
 			ai_available: false,
 		});
 	}
+});
+
+// Reranking endpoints
+app.post("/api/rerank", strictLimiter, async (req, res) => {
+	try {
+		const { research_statement_id, force, batch_size } = req.body || {};
+		const result = await runRerank({
+			statementId: research_statement_id
+				? Number(research_statement_id)
+				: undefined,
+			force: force !== false,
+			batchSize: Number(batch_size) || 100,
+		});
+		if (!result.ok) return res.status(409).json(result);
+		res.json({ ok: true });
+	} catch (err) {
+		console.error("Error starting rerank:", err);
+		res.status(500).json({ error: "Failed to start rerank" });
+	}
+});
+
+app.get("/api/rerank/status", generalLimiter, (req, res) => {
+	res.json(getRerankStatus());
 });
 
 // (Removed temporary /api/_debug/routes dev endpoint)
